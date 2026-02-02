@@ -242,3 +242,6 @@ click-analyze-button, .click-analyze-button h3 {
     padding-left: calc(var(--spacing, .25rem) * 4);
     padding-right: calc(var(--spacing, .25rem) * 4);
 }
+.just-test{
+    margin-left: auto;
+}
