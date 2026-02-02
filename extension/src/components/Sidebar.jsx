@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 export default function Sidebar() {
     const [customPrompts, setCustomPrompts] = useState([]);  // 필요한 경우 여기에 기본값 추가 가능
     // 추천 프롬프트 목록
-    const [recommendedPrompts] = useState([
+    const [recommendedPrompts, setRecommendedPrompts] = useState([
         { 
             title: 'T-분포 개괄', 
             content: 'T-분포의 정의와 주요 특징을 설명해줘.',

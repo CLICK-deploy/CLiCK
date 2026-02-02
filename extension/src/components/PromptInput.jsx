@@ -89,8 +89,9 @@ export default function PromptInput() {
 
     // 패널 크기/높이 입력창과 동기화
     useEffect(() => {
-        if (!isPanelVisible) return;
+        if (!isPanelVisible || !textarea) return;
         function syncPanelSize() {
+            if (!textarea) return;
             const taRect = textarea.getBoundingClientRect();
             setPanelSize({
                 width: '100%',

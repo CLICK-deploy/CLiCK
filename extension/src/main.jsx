@@ -67,18 +67,24 @@ function injectAnalysisContainer() {
 // 폼/버튼이 사라졌을 때 자동 복구를 위한 폴백 인터벌
 let clickUiInterval = null;
 function ensureUiInjected() {
-    injectSidebar();
-    injectPromptTools();
+    const sidebarInjected = injectSidebar();
+    const promptToolsInjected = injectPromptTools();
+    
+    // 두 UI가 모두 성공적으로 주입된 경우에만 인터벌을 시작
+    if ((sidebarInjected || document.querySelector('#click-sidebar-root')) && 
+        (promptToolsInjected || document.querySelector('#click-button-root'))) {
+        if (!clickUiInterval) {
+            clickUiInterval = setInterval(() => {
+                injectSidebar();
+                injectPromptTools();
+            }, 300);
+        }
+    }
 }
 
 // MutationObserver를 사용하여 ChatGPT의 동적 UI 로딩에 대응
 const observer = new MutationObserver((mutations, obs) => {
-    injectSidebar();
-    injectPromptTools();
-    // 폼/버튼이 모두 있으면 폴백 인터벌 시작(계속 감시)
-    if (!clickUiInterval) {
-        clickUiInterval = setInterval(ensureUiInjected, 300);
-    }
+    ensureUiInjected();
 });
 
 observer.observe(document.body, {

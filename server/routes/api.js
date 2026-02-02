@@ -13,7 +13,22 @@ const supabase = createClient(
 );
 
 router.post("/analyze-prompt", async (req, res) => {
-    const { prompt } = req.body;
+    const { prompt, userID, chatID } = req.body;
+    
+    // Input validation
+    if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: "프롬프트가 필요합니다" });
+    }
+    
+    if (prompt.length > 8000) {
+        return res.status(400).json({ error: "프롬프트가 너무 깁니다 (최대 8000자)" });
+    }
+    
+    // Validate userID if provided
+    if (userID && typeof userID !== 'string') {
+        return res.status(400).json({ error: "유효하지 않은 사용자 ID입니다" });
+    }
+    
     try {
         const sys = `다음 프롬프트를 태그별로 분석하고 JSON 형식으로 수정안을 제시해줘. 
 형식: {"tags":[],"patches":{},"full_suggestion":""}`;
@@ -25,9 +40,18 @@ router.post("/analyze-prompt", async (req, res) => {
             ],
         });
 
-        const parsed = JSON.parse(completion.choices[0].message.content);
+        let parsed;
+        try {
+            parsed = JSON.parse(completion.choices[0].message.content);
+        } catch (parseError) {
+            console.error('JSON 파싱 실패:', parseError);
+            console.error('OpenAI 응답:', completion.choices[0].message.content);
+            return res.status(500).json({ error: "OpenAI 응답을 파싱할 수 없습니다" });
+        }
+        
         await supabase.from("analyses").insert({
-            user_id: "anon",
+            user_id: userID || "anonymous",
+            chat_id: chatID || null,
             source_text: prompt,
             tags: parsed.tags,
             patches: parsed.patches,

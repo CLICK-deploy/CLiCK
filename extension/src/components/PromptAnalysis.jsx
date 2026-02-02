@@ -27,37 +27,59 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         );
     };
 
-    const getColoredText = useMemo(() => {
-        if (!result?.full_suggestion) return source;
+    const getColoredTextElements = useMemo(() => {
+        if (!result?.full_suggestion) return [source];
         
-        let text = result.full_suggestion;
-        const replacements = [];
+        const text = result.full_suggestion;
+        const highlights = [];
 
+        // Collect all highlights with their positions
         Object.entries(result.patches || {}).forEach(([tag, patches]) => {
             if (!Array.isArray(patches)) return;
             
             patches.forEach(patch => {
                 // 활성화된 태그의 교정된 텍스트(to)에만 색상 적용
                 if (enabledTags.includes(tag) && text.includes(patch.to)) {
-                    replacements.push({
-                        from: patch.to,
-                        to: `<span style="color: ${TAG_COLORS[tag]};">${patch.to}</span>`,
-                        index: text.indexOf(patch.to)
-                    });
+                    const index = text.indexOf(patch.to);
+                    if (index !== -1) {
+                        highlights.push({
+                            start: index,
+                            end: index + patch.to.length,
+                            text: patch.to,
+                            color: TAG_COLORS[tag]
+                        });
+                    }
                 }
             });
         });
 
-        // 뒤에서부터 적용하여 인덱스 문제 방지
-        replacements
-            .sort((a, b) => b.index - a.index)
-            .forEach(({ from, to }) => {
-                if (text.includes(from)) {
-                    text = text.replace(from, to);
-                }
-            });
+        // Sort highlights by start position
+        highlights.sort((a, b) => a.start - b.start);
 
-        return text;
+        // Build React elements array
+        const elements = [];
+        let lastIndex = 0;
+
+        highlights.forEach((highlight, idx) => {
+            // Add text before highlight
+            if (highlight.start > lastIndex) {
+                elements.push(text.substring(lastIndex, highlight.start));
+            }
+            // Add highlighted text as a span element
+            elements.push(
+                <span key={`highlight-${idx}`} style={{ color: highlight.color }}>
+                    {highlight.text}
+                </span>
+            );
+            lastIndex = highlight.end;
+        });
+
+        // Add remaining text
+        if (lastIndex < text.length) {
+            elements.push(text.substring(lastIndex));
+        }
+
+        return elements.length > 0 ? elements : [text];
     }, [result, enabledTags, source]);
 
     // Apply 버튼 클릭 시 활성화된 태그의 교정사항만 적용
@@ -69,7 +91,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         Object.entries(result.patches || {}).forEach(([tag, patches]) => {
             if (Array.isArray(patches) && enabledTags.includes(tag)) {
                 patches.forEach(patch => {
-                    finalText = finalText.replace(patch.from, patch.to);
+                    finalText = finalText.replaceAll(patch.from, patch.to);
                 });
             }
         });
@@ -101,8 +123,8 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
             <div className="panel-body" ref={bodyRef} 
                 style={{padding: 0, height: bodyHeight, overflow: 'auto', background: 'inherit'}}>
                 <div className="text-container" 
-                    style={{...fallbackStyle, margin: 0, whiteSpace: 'pre-wrap', border: 'none', background: 'none', boxShadow: 'none'}}
-                    dangerouslySetInnerHTML={{ __html: getColoredText }}>
+                    style={{...fallbackStyle, margin: 0, whiteSpace: 'pre-wrap', border: 'none', background: 'none', boxShadow: 'none'}}>
+                    {getColoredTextElements}
                 </div>
             </div>
 
