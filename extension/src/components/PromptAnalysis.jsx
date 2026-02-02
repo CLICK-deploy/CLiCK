@@ -91,7 +91,8 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         Object.entries(result.patches || {}).forEach(([tag, patches]) => {
             if (Array.isArray(patches) && enabledTags.includes(tag)) {
                 patches.forEach(patch => {
-                    finalText = finalText.replaceAll(patch.from, patch.to);
+                    // Use split/join approach for literal string replacement (handles special regex chars safely)
+                    finalText = finalText.split(patch.from).join(patch.to);
                 });
             }
         });
