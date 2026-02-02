@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 
 const TAG_COLORS = {
-  '모호/지시 불명확': '#7BEB75',  
-  '구조/길이 중복': '#B7A3E3',  
-  '문체/스타일 개선': '#C2E2FA', 
-  '오타/맞춤법': '#FF8F8F',     
+    '모호/지시 불명확': '#7BEB75',  
+    '구조/길이 중복': '#B7A3E3',  
+    '문체/스타일 개선': '#C2E2FA', 
+    '오타/맞춤법': '#FF8F8F',     
 };
 
 export default function PromptAnalysis({ source, result, onClose, onApplyAll, panelStyle, onAnalyze, loading }) {
