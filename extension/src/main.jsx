@@ -5,10 +5,10 @@ import Sidebar from './components/Sidebar';
 import PromptInput from './components/PromptInput';
 import './App.css'; 
 
-// ★★★
+/*
 // 이 파일은 빌드 후 content.js가 되어 ChatGPT 페이지에 직접 주입됩니다.
 // 따라서 이 파일 자체가 콘텐츠 스크립트의 역할을 수행합니다.
-// ★★★
+*/
 
 function injectSidebar() {
     const targetNav = document.querySelector('[class="group/sidebar-expando-section mb-[var(--sidebar-expanded-section-margin-bottom)]"]');
@@ -23,9 +23,7 @@ function injectSidebar() {
                 <Sidebar />
             </React.StrictMode>
         );
-        return true;
     }
-    return false;
 }
 
 function injectPromptTools() {
@@ -72,7 +70,7 @@ function ensureUiInjected() {
 }
 
 // MutationObserver를 사용하여 ChatGPT의 동적 UI 로딩에 대응
-const observer = new MutationObserver((mutations, obs) => {
+const observer = new MutationObserver(() => {
     injectSidebar();
     injectPromptTools();
     // 폼/버튼이 모두 있으면 폴백 인터벌 시작(계속 감시)

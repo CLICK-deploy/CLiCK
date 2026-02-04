@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 
 const TAG_COLORS = {
     '모호/지시 불명확': '#7BEB75',  
@@ -60,6 +60,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         return text;
     }, [result, enabledTags, source]);
 
+    // TODO: 함수명 PromptInput 함수와 겹침
     // Apply 버튼 클릭 시 활성화된 태그의 교정사항만 적용
     const handleApplyAll = () => {
         if (!result?.full_suggestion) return;
@@ -85,6 +86,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         width: panelStyle && panelStyle.width,
     };
 
+    // TODO: 최대 height 작동하게 "해"
     useEffect(() => {
         if (!panelStyle?.minHeight || !headerRef.current) return;
         const maxHeight = 600;
@@ -92,6 +94,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         setBodyHeight(`${height}px`);
     }, [panelStyle, headerRef]);
 
+    // TODO: CSS 분리
     return (
         <div className="click-analysis-panel" style={{...panelStyle, ...fallbackStyle}}>
             <div className="panel-header" style={fallbackStyle} ref={headerRef}>

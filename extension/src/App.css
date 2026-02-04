@@ -232,6 +232,10 @@ click-analyze-button, .click-analyze-button h3 {
     padding-bottom: calc(var(--spacing, .25rem) * 3);
     transform: translateY(-.5px);
     word-break: break-all;
+    /* 
+    max-height: 7.5em;
+    overflow-y: auto;
+    */
 }
 .panel-footer {
     display: flex;
