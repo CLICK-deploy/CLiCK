@@ -66,8 +66,6 @@ export default function PromptInput() {
         return () => clearInterval(interval);
     }, []);
 
-
-
     // 패널이 열려 있으면 입력값을 실시간 반영 (이벤트+폴링)
     useEffect(() => {
         if (!isPanelVisible || !textarea) return;
@@ -77,7 +75,7 @@ export default function PromptInput() {
             setLiveText(val);
             prev = val;
         };
-        const events = ['input', 'change', 'keyup', 'paste', 'cut', 'compositionend', 'blur'];
+        const events = ['input', 'change', 'keyup', 'keydown','paste', 'cut', 'compositionend', 'blur'];
         events.forEach(ev => textarea.addEventListener(ev, handler));
         handler();
         // 폴링 백업(300ms)
@@ -157,19 +155,17 @@ export default function PromptInput() {
         }
     };
 
-    // handleApplyAll 함수 수정
+    // 제출하기
     const handleApplyAll = (text) => {
         if (!textarea) return;
         
-        // 텍스트 적용
         textarea.innerText = text;
         // 이벤트 발생 - ChatGPT UI 업데이트를 위해
         textarea.dispatchEvent(new Event("change", { bubbles: true }));
-        textarea.focus(); // 포커스 이동
-        // 패널 상태 초기화 및 닫기
-        setAnalysis(null); // 분석 결과 초기화
-        setPanelVisible(false); // 패널 닫기
-        setLiveText(''); // 실시간 텍스트 초기화
+        textarea.focus(); 
+        setAnalysis(null); 
+        setPanelVisible(false);
+        setLiveText(''); 
 
     };
 

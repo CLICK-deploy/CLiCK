@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "../config";
+
 chrome.runtime.onInstalled.addListener(() => {
     console.log("CLICK extension installed.");
 });
@@ -10,13 +12,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         (async () => {
             try {
                 const response = await fetch(
-                    "http://localhost:3001/api/analyze-prompt",
+                    `${API_BASE_URL}/api/analyze-prompt`,
                     {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
                         },
-                        body: JSON.stringify({ prompt: message.prompt }),
+                        body: JSON.stringify({ 
+                            userID: message.userID,
+                            chatID: message.chatID,
+                            prompt: message.prompt 
+                        }),
                     }
                 );
 
@@ -27,13 +33,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 }
 
                 const data = await response.json();
-                sendResponse(data); // 성공 시 분석 결과를 응답으로 보냄
+                sendResponse(data); 
             } catch (error) {
-                console.error("API 요청 실패:", error);
-                sendResponse({ error: error.message }); // 실패 시 에러 메시지를 응답으로 보냄
+                console.error("분석 API 요청 실패:", error);
+                sendResponse({ error: error.message }); 
             }
         })();
 
         return true; // 비동기 sendResponse를 사용하려면 반드시 true를 반환
+    }
+
+    // 2. 추천 프롬프트 목록 조회 요청
+    if (message.type === "FETCH_RECOMMENDED_PROMPTS") {
+        (async () => {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/recommended-prompts`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        // Spec에 맞춰 userID, chatID 전송
+                        body: JSON.stringify({ 
+                            userID: message.userID,
+                            chatID: message.chatID 
+                        }),
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Server responded with status: ${response.status}`
+                    );
+                }
+
+                const data = await response.json();
+                sendResponse(data); 
+            } catch (error) {
+                console.error("추천 프롬프트 API 요청 실패:", error);
+                sendResponse({ error: error.message });
+            }
+        })();
+
+        return true; // 비동기 응답 대기
     }
 });
