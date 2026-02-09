@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>사용자 정보 입력 - CLiCK</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- 커스텀 알림창 -->
+    <div id="custom-alert" class="custom-alert">
+      <div class="alert-content">
+        <p id="alert-message"></p>
+        <button type="button" id="alert-close">확인</button>
+      </div>
+    </div>
+
+    <div class="container">
+      <form class="user-data-form" novalidate>
+        <div class="logo-area">
+          <img src="icon.png" alt="CLiCK 아이콘" class="logo-icon" />
+          <img src="logo.png" alt="CLiCK 로고 텍스트" class="logo-text" />
+        </div>
+
+        <div class="input-group">
+          <input
+            type="text"
+            id="nickname"
+            name="nickname"
+            placeholder="닉네임"
+            required
+          />
+        </div>
+
+        <div class="input-group">
+          <select id="age_group" name="age_group" required>
+            <option value="" disabled selected>연령대</option>
+            <option value="under_20">20세 미만</option>
+            <option value="20s">20대</option>
+            <option value="30s">30대</option>
+            <option value="40s">40대</option>
+            <option value="50s">50대</option>
+            <option value="over_60">60세 이상</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <select id="gender" name="gender" required>
+            <option value="" disabled selected>성별</option>
+            <option value="male">남자</option>
+            <option value="female">여자</option>
+            <option value="not_disclosed">선택 안함</option>
+          </select>
+        </div>
+
+        <div
+          class="input-group"
+          style="
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+          "
+        >
+          <label class="custom-checkbox-label" style="margin-bottom: 0">
+            <input
+              type="checkbox"
+              id="agreeAllInfo"
+              name="agreeAllInfo"
+              class="custom-checkbox"
+              required
+            />
+            <span class="custom-checkbox-span"></span>
+          </label>
+          <span class="agree-all-label">
+            <a href="agree.html" target="_blank" class="terms-link">상기 내용</a
+            >에 동의합니다.
+          </span>
+        </div>
+
+        <button type="submit" class="start-button">시작하기</button>
+      </form>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

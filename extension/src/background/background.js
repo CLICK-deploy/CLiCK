@@ -90,7 +90,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({ 
-                            username: message.username,
+                            userId: message.userId,
                             password: message.password 
                         }),
                     }
@@ -106,12 +106,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 
                 // 로그인 성공 시 Chrome Storage에 저장
                 await chrome.storage.local.set({
-                    userID: data.userID || message.username,
+                    userID: data.userID || message.userId,
                     isLoggedIn: true,
                     loginTime: Date.now()
                 });
 
-                sendResponse({ success: true, userID: data.userID || message.username }); 
+                sendResponse({ success: true, userID: data.userID || message.userId }); 
             } catch (error) {
                 console.error("로그인 API 요청 실패:", error);
                 sendResponse({ success: false, error: error.message }); 
@@ -151,6 +151,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
         })();
 
+        return true;
+    }
+
+    // 로그인 페이지 열기 요청
+    if (message.type === "OPEN_LOGIN_PAGE") {
+        chrome.tabs.create({
+            url: chrome.runtime.getURL('login.html')
+        });
+        sendResponse({ success: true });
         return true;
     }
 });

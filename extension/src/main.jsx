@@ -10,6 +10,24 @@ import './App.css';
 // 따라서 이 파일 자체가 콘텐츠 스크립트의 역할을 수행합니다.
 */
 
+// 로그인 상태 확인 및 필요 시 로그인 페이지 열기
+async function checkLoginAndRedirect() {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            { type: "CHECK_LOGIN" },
+            (response) => {
+                if (!response.isLoggedIn) {
+                    // 로그인 페이지 열기
+                    chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
+                    resolve(false);
+                } else {
+                    resolve(true);
+                }
+            }
+        );
+    });
+}
+
 function injectSidebar() {
     const targetNav = document.querySelector('[class="group/sidebar-expando-section mb-[var(--sidebar-collapsed-section-margin-bottom)]"]');
     if (targetNav && !document.querySelector('#click-sidebar-root')) {
@@ -61,10 +79,11 @@ function injectAnalysisContainer() {
     }
 }
 
-
 // 폼/버튼이 사라졌을 때 자동 복구를 위한 폴백 인터벌
 let clickUiInterval = null;
-function ensureUiInjected() {
+async function ensureUiInjected() {
+    const isLoggedIn = await checkLoginAndRedirect();
+
     injectSidebar();
     injectPromptTools();
 }

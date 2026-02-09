@@ -3,7 +3,7 @@
   "name": "CLiCK",
   "version": "1.0.0",
   "description": "ChatGPT UI 개선 확장 프로그램",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": ["http://localhost:3001/*"],
   "background": {
     "service_worker": "background.js",
@@ -17,6 +17,12 @@
       ],
       "js": ["content.js"],
       "css": ["style.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["login.html"],
+      "matches": ["<all_urls>"]
     }
   ]
 }

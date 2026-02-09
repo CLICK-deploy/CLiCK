@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>개인정보 수집·이용 동의</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .consent-card {
+        max-width: 840px;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen flex items-center justify-center p-6">
+    <main
+      class="consent-card w-full bg-white rounded-2xl shadow-lg p-6 md:p-10"
+    >
+      <header class="mb-6">
+        <h1 class="text-2xl font-semibold">개인정보 수집·이용 동의</h1>
+      </header>
+
+      <!-- 필수 동의 내용 -->
+      <section class="border rounded-xl p-4 bg-gray-50 mb-6">
+        <div>
+          <h2 class="font-medium mb-2">개인정보 수집 및 이용 (필수)</h2>
+          <p class="text-sm text-gray-600 mb-3">
+            수집 항목: 닉네임, 성별, 연령대, 프롬프트 입력/개선 데이터, 사용
+            패턴(시간대/주제), 기기정보(IP 익명화 처리). 이용 목적: 개인
+            통계·리포트 제공, 서비스 개선, 프롬프트 리포트 제공 등.
+          </p>
+
+          <div class="prose prose-sm text-gray-700">
+            <p><strong>제공받는 자:</strong> CLiCK</p>
+            <p>
+              <strong>수집 목적:</strong> 사용자별 사용 통계 및 리포트 제공,
+              개선 전/후 비교 통계, 사용자 행동 분석, 리더보드 산출, 프롬프트
+              리포트 제공, 신규 기능 연구·개발, 데이터 내보내기 처리
+            </p>
+            <p>
+              <strong>수집 항목:</strong> 닉네임, 성별, 연령대, 프롬프트 입력 및
+              개선 데이터, 평가 점수, 사용량 통계, 주제별 이용 내역, 접속
+              일시/시간대, 검색 키워드, 접속 기기/브라우저 정보(IP 익명화 처리)
+            </p>
+            <p>
+              <strong>보유 및 이용 기간:</strong> 회원 탈퇴 시 또는 수집 목적
+              달성 시까지 보관 후 파기. 단, 법령상 보존 필요 시 해당 기간 따름.
+            </p>
+            <p>
+              <strong>권리 안내:</strong> 동의를 거부할 권리가 있으나, 거부 시
+              개인화 리포트 및 일부 기능 이용이 제한될 수 있습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 전체 약관 -->
+      <section class="border rounded-xl p-4">
+        <h2 class="text-lg font-semibold mb-4">개인정보 처리방침(상세)</h2>
+        <div class="prose text-sm text-gray-700">
+          <h3>1. 수집 항목</h3>
+          <p>
+            닉네임, 성별, 연령대, 프롬프트 원문/개선본/점수, 사용 패턴(주제,
+            시간대), 기기/접속 정보(IP 익명화 처리) 등을 수집합니다.
+          </p>
+          <h3>2. 이용 목적</h3>
+          <p>
+            개인형 리포트 제공, 프롬프트 개선 분석, 리더보드 및 인기 키워드 통계
+            제공, 서비스 개선 및 연구개발 등.
+          </p>
+          <h3>3. 보관 기간</h3>
+          <p>
+            회원 탈퇴 시 또는 목적 달성 시 파기. 법령상 보존 필요 시 예외 적용.
+          </p>
+          <h3>4. 제3자 제공</h3>
+          <p>
+            개인 식별 불가한 통계(집계) 형태로만 제공되며, 개인을 식별할 수 있는
+            정보는 제공하지 않습니다.
+          </p>
+          <h3>5. 위탁</h3>
+          <p>
+            시스템 운영·데이터 분석 등 일부 업무를 위탁할 수 있으며, 위탁 시
+            수탁자 명을 사전 고지합니다.
+          </p>
+          <h3>6. 권리 및 문의</h3>
+          <p>
+            사용자는 언제든 데이터 열람·정정·삭제·처리정지 등을 요구할 수
+            있습니다. 문의처: privacy@yourcompany.com
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
