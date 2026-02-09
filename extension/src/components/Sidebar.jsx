@@ -5,6 +5,28 @@ export default function Sidebar() {
     const [recommendedPrompts, setRecommendedPrompts] = useState([]);
     const [submitCount, setSubmitCount] = useState(0); 
 
+    // 로그인된 사용자 ID 가져오기
+    const getUserID = async () => {
+        try {
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                    { type: "CHECK_LOGIN" }, 
+                    resolve
+                );
+            });
+            
+            if (response.isLoggedIn && response.userID) {
+                return response.userID;
+            } else {
+                console.warn('로그인되지 않음');
+                return null;
+            }
+        } catch (error) {
+            console.error('사용자 ID 가져오기 실패:', error);
+            return null;
+        }
+    };
+
     // 현재 채팅방 ID 찾기
     const findCurrentChatId = () => {
         const historyContainer = document.querySelector('#history');
@@ -18,10 +40,16 @@ export default function Sidebar() {
     useEffect(() => {
         const fetchPrompts = async () => {
             try {
+                const currentUserID = await getUserID();
+                if (!currentUserID) {
+                    console.warn('userID가 올바르지 않습니다.');
+                    return;
+                }
+
                 // background.js로 요청 위임
                 const response = await new Promise((resolve, reject) => {
                     chrome.runtime.sendMessage(
-                        { type: "FETCH_RECOMMENDED_PROMPTS", userID: "test", chatID: findCurrentChatId() }, 
+                        { type: "FETCH_RECOMMENDED_PROMPTS", userID: currentUserID, chatID: findCurrentChatId() }, 
                         (res) => res && res.error ? reject(res.error) : resolve(res)
                     );
                 });
@@ -59,17 +87,16 @@ export default function Sidebar() {
     // 버튼 클릭 및 엔터 키 감지 
     useEffect(() => {
         const triggerSubmit = () => {
+            const textarea = document.querySelector('#prompt-textarea');
+            if (!textarea.innerText) return;
+
             console.log("메시지 제출 감지됨! -> 프롬프트 갱신 요청");
-            // submitCount를 변경하여 위의 fetchPrompts useEffect가 재실행되게 함
             setSubmitCount(prev => prev + 1);
         };
 
         // 클릭 이벤트 핸들러 (이벤트 위임)
-        const handleGlobalClick = () => {
-            // 클릭된 요소가 submit 버튼 내부인지 확인
+        const handleGlobalClick = (e) => {
             const submitBtn = e.target.closest('#composer-submit-button');
-            
-            // 버튼이 눌렸고, 비활성화(disabled) 상태가 아닐 때만 실행
             if (submitBtn && !submitBtn.disabled) {
                 triggerSubmit();
             }
@@ -104,11 +131,12 @@ export default function Sidebar() {
 
     return (
         <>
-            <div tabIndex="0" data-fill className="group __menu-item hoverable" aria-expanded="true" aria-label="섹션 접기" data-no-hover-bg="true" data-no-contents-gap="true">
-                <div className="text-token-text-tertiary flex w-full items-center justify-start gap-0.5">
-                    <h2 className="__menu-label" data-no-spacing="true"> prompt </h2>
-                </div>
-            </div>
+            <div className="group/sidebar-expando-section mb-[var(--sidebar-expanded-section-margin-bottom)]">
+                <button aria-expanded="true" className="text-token-text-tertiary flex w-full items-center justify-start gap-0.5 px-4 py-1.5">
+                    <h2 className="__menu-label" data-no-spacing="true">
+                        Prompt
+                    </h2>
+                </button>
 
             {recommendedPrompts.map(p => (
                 <a tabIndex="0" data-fill className="group __menu-item hoverable" draggable="true" data-discover="true" key={p.id} onClick={() => applyPrompt(p.content)}>
@@ -132,6 +160,7 @@ export default function Sidebar() {
                     </div>
                 </a>
             ))}
+            </div>
         </>
     );
 }

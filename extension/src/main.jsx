@@ -11,7 +11,7 @@ import './App.css';
 */
 
 function injectSidebar() {
-    const targetNav = document.querySelector('[class="group/sidebar-expando-section mb-[var(--sidebar-expanded-section-margin-bottom)]"]');
+    const targetNav = document.querySelector('[class="group/sidebar-expando-section mb-[var(--sidebar-collapsed-section-margin-bottom)]"]');
     if (targetNav && !document.querySelector('#click-sidebar-root')) {
         const sidebarRoot = document.createElement('div');
         sidebarRoot.id = 'click-sidebar-root';

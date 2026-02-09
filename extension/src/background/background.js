@@ -6,7 +6,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // 콘텐츠 스크립트로부터 메시지를 받기 위한 리스너 추가
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // 메시지 타입이 'ANALYZE_PROMPT'일 때만 작동
+    // 프롬프트 분석 요청
     if (message.type === "ANALYZE_PROMPT") {
         // 비동기 응답을 위해 true를 반환해야 합니다.
         (async () => {
@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true; // 비동기 sendResponse를 사용하려면 반드시 true를 반환
     }
 
-    // 2. 추천 프롬프트 목록 조회 요청
+    // 추천 프롬프트 목록 조회 요청
     if (message.type === "FETCH_RECOMMENDED_PROMPTS") {
         (async () => {
             try {
@@ -77,5 +77,80 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         })();
 
         return true; // 비동기 응답 대기
+    }
+
+    if (message.type === "LOGIN") {
+        (async () => {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/login`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ 
+                            username: message.username,
+                            password: message.password 
+                        }),
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Login failed with status: ${response.status}`
+                    );
+                }
+
+                const data = await response.json();
+                
+                // 로그인 성공 시 Chrome Storage에 저장
+                await chrome.storage.local.set({
+                    userID: data.userID || message.username,
+                    isLoggedIn: true,
+                    loginTime: Date.now()
+                });
+
+                sendResponse({ success: true, userID: data.userID || message.username }); 
+            } catch (error) {
+                console.error("로그인 API 요청 실패:", error);
+                sendResponse({ success: false, error: error.message }); 
+            }
+        })();
+
+        return true;
+    }
+
+    // 로그아웃 요청
+    if (message.type === "LOGOUT") {
+        (async () => {
+            try {
+                await chrome.storage.local.remove(['userID', 'isLoggedIn', 'loginTime']);
+                sendResponse({ success: true }); 
+            } catch (error) {
+                console.error("로그아웃 실패:", error);
+                sendResponse({ success: false, error: error.message }); 
+            }
+        })();
+
+        return true;
+    }
+
+    // 로그인 상태 확인 요청
+    if (message.type === "CHECK_LOGIN") {
+        (async () => {
+            try {
+                const data = await chrome.storage.local.get(['userID', 'isLoggedIn']);
+                sendResponse({ 
+                    isLoggedIn: data.isLoggedIn || false, 
+                    userID: data.userID || null 
+                }); 
+            } catch (error) {
+                console.error("로그인 상태 확인 실패:", error);
+                sendResponse({ isLoggedIn: false, userID: null }); 
+            }
+        })();
+
+        return true;
     }
 });

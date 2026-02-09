@@ -17,6 +17,37 @@ export default function PromptInput() {
     const [liveText, setLiveText] = useState('');
     const [panelSize, setPanelSize] = useState({});
 
+    // 현재 채팅방 ID 찾기
+    const findCurrentChatId = () => {
+        const historyContainer = document.querySelector('#history');
+        if (!historyContainer) return null;
+
+        const activeElement = historyContainer.querySelector('a[data-active]');
+        return activeElement ? activeElement.getAttribute('href') : null;
+    };
+
+    // 로그인된 사용자 ID 가져오기
+    const getUserID = async () => {
+        try {
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                    { type: "CHECK_LOGIN" }, 
+                    resolve
+                );
+            });
+            
+            if (response.isLoggedIn && response.userID) {
+                return response.userID;
+            } else {
+                console.warn('로그인되지 않음');
+                return null;
+            }
+        } catch (error) {
+            console.error('사용자 ID 가져오기 실패:', error);
+            return null;
+        }
+    };
+
     // 패널을 DOM의 별도 위치에 렌더링하기 위한 로직
     const renderPanel = () => {
         const panelRoot = document.getElementById('click-prompt-tools-container');
@@ -108,20 +139,31 @@ export default function PromptInput() {
     }, [isPanelVisible, textarea]);
 
     // 분석하기 버튼 클릭 시
+    // TODO: 백엔드 연동
     const handleAnalyze = async () => {
         if (!textarea) return;
         setLoading(true);
 
         try {
+            const currentUserID = await getUserID();
+            if (!currentUserID) {
+                console.warn('userID가 올바르지 않습니다.');
+                return;
+            }
 
             console.log('loading...');  
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            const response = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                    { type: "ANALYZE_PROMPT", userID: currentUserID, chatID: findCurrentChatId(), prompt: getTextareaValue(textarea) }, 
+                    (res) => res && res.error ? reject(res.error) : resolve(res)
+                );
+            }); 
+            // await new Promise(resolve => setTimeout(resolve, 3000));
             console.log('loading complete');
 
-
-            // TODO: 백엔드 연동
-            // 실제 응답 형식에 맞는 예제 데이터
-            const response = {
+            setAnalysis({ source: getTextareaValue(textarea), result: response });
+        } catch (err) {
+            setAnalysis({
                 tags: [
                     "오타/맞춤법",
                     "모호/지시 불명확",
@@ -145,10 +187,9 @@ export default function PromptInput() {
                 original_text: "아 치킨먹고싶다~ 안되나?",
                 // 전체 수정 제안
                 full_suggestion: "아 치킨 먹고 싶다~ 안 되는 이유를 3가지 이유로 설명해줘"
-            };
-            setAnalysis({ source: getTextareaValue(textarea), result: response });
-        } catch (err) {
-            console.error('분석 실패:', err);
+            })
+
+            console.error('분석 실패, 기본 분석값을 보입니다:', err);
             alert('분석에 실패했습니다. 백엔드 서버를 확인해주세요.');
         } finally {
             setLoading(false);
