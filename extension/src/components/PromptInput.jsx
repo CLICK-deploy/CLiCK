@@ -48,6 +48,32 @@ export default function PromptInput() {
         }
     };
 
+    // 테스트용 분석 결과 생성
+    const getTestAnalysisResult = () => {
+        return {
+            tags: [
+                "오타/맞춤법",
+                "모호/지시 불명확",
+            ],
+            patches: {
+                "오타/맞춤법": [
+                    {
+                        from: "치킨먹고싶다~",
+                        to: "치킨 먹고 싶다~"
+                    }
+                ],
+                "모호/지시 불명확": [
+                    {
+                        from: "안되나?",
+                        to: "안 되는 이유를 3가지 이유로 설명해줘"
+                    }
+                ],
+            },
+            original_text: "아 치킨먹고싶다~ 안되나?",
+            full_suggestion: "아 치킨 먹고 싶다~ 안 되는 이유를 3가지 이유로 설명해줘"
+        };
+    };
+
     // 패널을 DOM의 별도 위치에 렌더링하기 위한 로직
     const renderPanel = () => {
         const panelRoot = document.getElementById('click-prompt-tools-container');
@@ -63,7 +89,9 @@ export default function PromptInput() {
                         source={liveText}
                         result={analysis ? analysis.result : { tags: [], patches: {}, full_suggestion: liveText }}
                         /* X 버튼 누르면 분석 결과 지우기 */
-                        onClose={() => setPanelVisible(false)}
+                        onClose={() => {
+                            setPanelVisible(false);
+                        }}
                         onApplyAll={handleApplyAll}
                         panelStyle={panelSize}
                         onAnalyze={handleAnalyze} 
@@ -148,6 +176,20 @@ export default function PromptInput() {
             const currentUserID = await getUserID();
             if (!currentUserID) {
                 console.warn('userID가 올바르지 않습니다.');
+                setLoading(false);
+                return;
+            }
+
+            // 테스트 계정일 때는 테스트 결과 사용
+            if (currentUserID === "test") {
+                console.log('테스트 계정: 테스트 분석 결과 사용');
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 로딩 시뮬레이션
+                
+                setAnalysis({ 
+                    source: "아 치킨먹고싶다~ 안되나?",
+                    result: getTestAnalysisResult() 
+                });
+                setLoading(false);
                 return;
             }
 
@@ -163,31 +205,10 @@ export default function PromptInput() {
 
             setAnalysis({ source: getTextareaValue(textarea), result: response });
         } catch (err) {
-            setAnalysis({
-                tags: [
-                    "오타/맞춤법",
-                    "모호/지시 불명확",
-                ],
-                patches: {
-                    "오타/맞춤법": [
-                        {
-                            from: "치킨먹고싶다~",
-                            to: "치킨 먹고 싶다~"
-                        }
-                    ],
-                    "모호/지시 불명확": [
-                        {
-                            from: "안되나?",
-                            to: "안 되는 이유를 3가지 이유로 설명해줘"
-                        }
-                    ],
-                    
-                },
-                // 원본 텍스트를 저장 (패치 적용을 위해)
-                original_text: "아 치킨먹고싶다~ 안되나?",
-                // 전체 수정 제안
-                full_suggestion: "아 치킨 먹고 싶다~ 안 되는 이유를 3가지 이유로 설명해줘"
-            })
+            setAnalysis({ 
+                source: "아 치킨먹고싶다~ 안되나?",
+                result: getTestAnalysisResult() 
+            });
 
             console.error('분석 실패, 기본 분석값을 보입니다:', err);
             alert('분석에 실패했습니다. 백엔드 서버를 확인해주세요.');
@@ -213,7 +234,7 @@ export default function PromptInput() {
     // TODO: CSS 분리
     return (
         <>
-            {/* 분석 패널 열기 버튼 (이제 마이크 옆에 표시됨) */}
+            {/* 분석 패널 열기 버튼 */}
             <button
                 type="button"
                 className="click-analyze-button"

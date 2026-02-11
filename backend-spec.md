@@ -194,20 +194,26 @@
     ```json
     {
         "userId": "string",
-        "password": "string"
+        "password": "string",
+        "ageGroup": "string",
+        "gender": "string"
     }
     ```
 -   상세:
 
     -   `userId:`: 사용자가 설정한 닉네임입니다.
     -   `password`: 사용자의 패스워드입니다.
+    -   `ageGroup`: 사용자의 나이 그룹입니다.
+    -   `gender`: 사용자의 성별입니다.
 
 -   예시:
 
     ```json
     {
         "userId": "복지관빨대도둑",
-        "password": "mySecurePassword123"
+        "password": "mySecurePassword123",
+        "ageGroup": "string",
+        "gender": "string"
     }
     ```
 
@@ -255,3 +261,85 @@
     -   클라이언트는 성공 시 `userID`를 Chrome Storage에 저장합니다.
     -   이후 모든 API 요청(`ANALYZE_PROMPT`, `FETCH_RECOMMENDED_PROMPTS`)에서 이 `userID`를 사용합니다.
     -   로그아웃 시 클라이언트는 Chrome Storage에서 `userID`와 로그인 상태를 삭제합니다.
+
+### 3.4. 닉네임 중복 확인 API
+
+로그인 전 사용자가 입력한 닉네임이 사용 가능한지 확인합니다.
+
+-   Endpoint: `/api/check-duplicate`
+-   HTTP Method: `POST`
+-   Description: 사용자가 입력한 닉네임이 이미 사용 중인지 확인합니다. 회원가입 시 닉네임 중복 확인 버튼을 클릭하면 호출됩니다.
+
+#### 요청 (Input)
+
+-   Body:
+    ```json
+    {
+        "userId": "string"
+    }
+    ```
+-   상세:
+
+    -   `userId`: 사용자가 입력한 닉네임입니다.
+
+-   예시:
+
+    ```json
+    {
+        "userId": "복지관빨대도둑"
+    }
+    ```
+
+#### 응답 (Output)
+
+-   성공 (200 OK):
+    ```json
+    {
+        "available": boolean
+    }
+    ```
+-   상세:
+
+    -   `available`: 닉네임 사용 가능 여부를 나타냅니다.
+    -   `true`: 사용 가능한 닉네임
+    -   `false`: 이미 사용 중인 닉네임
+
+-   예시 (사용 가능):
+
+    ```json
+    {
+        "available": true
+    }
+    ```
+
+-   예시 (사용 불가):
+
+    ```json
+    {
+        "available": false
+    }
+    ```
+
+-   실패 (400 Bad Request):
+    ```json
+    {
+        "error": "userId is required"
+    }
+    ```
+-   실패 (500 Internal Server Error):
+    ```json
+    {
+        "error": "Internal server error"
+    }
+    ```
+-   상세:
+    -   `error`: 중복 확인 실패 원인을 설명하는 메시지입니다.
+    -   `"userId is required"`: userId 필드가 누락됨
+    -   `"Internal server error"`: 서버 내부 오류
+
+-   note: 
+    -   클라이언트는 이 API를 통해 닉네임의 사용 가능 여부를 확인합니다.
+    -   중복 확인이 완료되어야만 회원가입(로그인) 버튼이 활성화됩니다.
+    -   사용자가 닉네임을 수정하면 중복 확인 상태가 초기화되어 다시 확인해야 합니다.
+
+---

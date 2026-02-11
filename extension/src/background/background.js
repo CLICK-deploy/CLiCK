@@ -82,6 +82,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "LOGIN") {
         (async () => {
             try {
+                // 테스트계정
+                if (message.userId === "test" && message.password === "tt") {
+                    console.log("테스트 계정 로그인 성공");
+                    
+                    // Chrome Storage에 저장
+                    await chrome.storage.local.set({
+                        userID: "test",
+                        isLoggedIn: true,
+                        loginTime: Date.now()
+                    });
+
+                    // 모든 ChatGPT 탭에 로그인 성공 메시지 전송
+                    chrome.tabs.query({ url: ["https://chatgpt.com/*", "https://chat.openai.com/*"] }, (tabs) => {
+                        tabs.forEach(tab => {
+                            chrome.tabs.sendMessage(tab.id, { type: "LOGIN_SUCCESS" });
+                        });
+                    });
+                    
+                    sendResponse({ success: true, userID: "test" });
+                    return;
+                }
+            
                 const response = await fetch(
                     `${API_BASE_URL}/api/login`,
                     {
@@ -91,7 +113,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         },
                         body: JSON.stringify({ 
                             userId: message.userId,
-                            password: message.password 
+                            password: message.password,
+                            ageGroup: message.ageGroup,
+                            gender: message.gender
                         }),
                     }
                 );
@@ -161,5 +185,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         sendResponse({ success: true });
         return true;
+    }
+
+    if (message.type === "CHECK_DUPLICATE") {
+    (async () => {
+        try {
+            console.log("닉네임 중복 확인 요청:", message.userId);
+
+            // 테스트계정
+            if (message.userId === "test") {
+                console.log("테스트 계정입니다.");
+                sendResponse({ available: true });
+                return;
+            }
+            
+            const response = await fetch(
+                `${API_BASE_URL}/api/check-duplicate`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ 
+                        userId: message.userId
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Check failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("중복 확인 응답:", data);
+            
+            sendResponse({ available: data.available }); 
+        } catch (error) {
+            console.error("중복 확인 실패:", error);
+            sendResponse({ available: false, error: error.message }); 
+        }
+        })();
+
+    return true;
     }
 });

@@ -64,7 +64,7 @@ export default function Sidebar() {
 
                 setRecommendedPrompts(formattedData);
             } catch (error) {
-                console.error('프롬프트 로딩 에러:', error);
+                console.error('프롬프트 로딩 에러. 테스트 프롬프트 사용됨:', error);
                 
                 setRecommendedPrompts([
                     { 

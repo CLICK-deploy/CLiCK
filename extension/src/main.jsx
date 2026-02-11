@@ -10,18 +10,23 @@ import './App.css';
 // 따라서 이 파일 자체가 콘텐츠 스크립트의 역할을 수행합니다.
 */
 
+let loginPageOpened = false;
+
 // 로그인 상태 확인 및 필요 시 로그인 페이지 열기
 async function checkLoginAndRedirect() {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage(
             { type: "CHECK_LOGIN" },
             (response) => {
-                if (!response.isLoggedIn) {
-                    // 로그인 페이지 열기
-                    chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
-                    resolve(false);
+                if (!response || !response.isLoggedIn) {
+                    if (!loginPageOpened) {
+                        // 로그인 페이지 열기
+                        chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
+                        loginPageOpened = true;
+                    }
+                    resolve(false);  
                 } else {
-                    resolve(true);
+                    resolve(true); 
                 }
             }
         );
@@ -84,21 +89,51 @@ let clickUiInterval = null;
 async function ensureUiInjected() {
     const isLoggedIn = await checkLoginAndRedirect();
 
-    injectSidebar();
-    injectPromptTools();
+    // 로그인되어 있을 때만 UI 주입
+    if (isLoggedIn) {
+        injectSidebar();
+        injectPromptTools();
+    }
 }
 
+// 초기 실행 - 로그인 확인 및 UI 주입
+(async () => {
+    await ensureUiInjected();
+})();
+
 // MutationObserver를 사용하여 ChatGPT의 동적 UI 로딩에 대응
-const observer = new MutationObserver(() => {
-    injectSidebar();
-    injectPromptTools();
-    // 폼/버튼이 모두 있으면 폴백 인터벌 시작(계속 감시)
-    if (!clickUiInterval) {
-        clickUiInterval = setInterval(ensureUiInjected, 300);
+const observer = new MutationObserver(async () => {
+    // 로그인 상태 확인
+    const isLoggedIn = await new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            { type: "CHECK_LOGIN" },
+            (response) => resolve(response && response.isLoggedIn)
+        );
+    });
+
+    // 로그인되어 있을 때만 UI 주입
+    if (isLoggedIn) {
+        injectSidebar();
+        injectPromptTools();
+        
+        // 폴백 인터벌 시작(계속 감시)
+        if (!clickUiInterval) {
+            clickUiInterval = setInterval(ensureUiInjected, 300);
+        }
     }
 });
 
 observer.observe(document.body, {
     childList: true,
     subtree: true
+});
+
+// 로그인 성공 메시지를 받으면 UI 주입 시작
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "LOGIN_SUCCESS") {
+        loginPageOpened = false; // 리셋
+        ensureUiInjected();
+        sendResponse({ success: true });
+    }
+    return true;
 });
