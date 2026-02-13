@@ -12,6 +12,29 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
     const bodyRef = useRef(null);
     const headerRef = useRef(null);
     const [bodyHeight, setBodyHeight] = useState();
+    const [colorScheme, setColorScheme] = useState('light');
+
+    // color-scheme 감지
+    useEffect(() => {
+        const detectColorScheme = () => {
+            const htmlElement = document.documentElement;
+            const computedStyle = getComputedStyle(htmlElement);
+            const scheme = computedStyle.getPropertyValue('color-scheme').trim();
+            setColorScheme(scheme || 'light');
+        };
+
+        // 초기 감지
+        detectColorScheme();
+
+        // MutationObserver로 class 변경 감지
+        const observer = new MutationObserver(detectColorScheme);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class', 'data-chat-theme']
+        });
+
+        return () => observer.disconnect();
+    }, []);
 
     // 결과가 변경될 때 태그 상태 초기화
     useEffect(() => {
@@ -79,9 +102,9 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
     };
 
     const fallbackStyle = {
-        color: 'var(--text-primary, #222)',
-        background: 'var(--main-surface-primary, #fff)',
-        borderColor: 'var(--border-default, #d1d5db)',
+        color: colorScheme === 'dark' ? '#ececf1' : '#0d0d0d',
+        background: colorScheme === 'dark' ? '#2f2f2f' : '#fff',
+        borderColor: colorScheme === 'dark' ? '#ffffff26' : '#0000001a',
         fontFamily: (panelStyle && panelStyle.fontFamily) || 'var(--font-sans, Inter, Noto Sans KR, Apple SD Gothic Neo, Arial, sans-serif)',
         fontSize: (panelStyle && panelStyle.fontSize) || 'var(--composer-font-size, 1rem)',
         width: panelStyle && panelStyle.width,
@@ -145,13 +168,16 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
                 </div>
 
                 <button className="apply-all-btn" 
-                    onClick={handleApplyAll}>
+                    onClick={handleApplyAll}
+                    background = {fallbackStyle.background}
+                    borderColor = {fallbackStyle.borderColor}>
                     <h3>Apply</h3>
                 </button>
 
                 <button className="analysis-btn" 
                     onClick={onAnalyze} 
-                    disabled={loading}>
+                    disabled={loading}
+                    borderColor = {fallbackStyle.borderColor}>
                     <h3>
                         {loading ? 'Analyzing...' : 'Analyze'}
                     </h3>

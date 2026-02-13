@@ -176,8 +176,6 @@ click-analyze-button, .click-analyze-button h3 {
 }
 .apply-all-btn {
     margin-left: auto;
-    /* background: var(--theme-user-selection-bg); */
-    fill : currentColor;
 
     box-sizing: border-box;
     border-width: 0px;
