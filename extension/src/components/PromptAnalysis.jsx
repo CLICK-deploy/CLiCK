@@ -12,7 +12,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
     const bodyRef = useRef(null);
     const headerRef = useRef(null);
     const [bodyHeight, setBodyHeight] = useState();
-    const [colorScheme, setColorScheme] = useState('light');
+    const [colorScheme, setColorScheme] = useState('dark');
 
     // color-scheme 감지
     useEffect(() => {
@@ -20,7 +20,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
             const htmlElement = document.documentElement;
             const computedStyle = getComputedStyle(htmlElement);
             const scheme = computedStyle.getPropertyValue('color-scheme').trim();
-            setColorScheme(scheme || 'light');
+            setColorScheme(scheme || 'dark');
         };
 
         // 초기 감지
@@ -102,12 +102,21 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
     };
 
     const fallbackStyle = {
+        fontFamily: (panelStyle && panelStyle.fontFamily) || 'var(--font-sans, Inter, Noto Sans KR, Apple SD Gothic Neo, Arial, sans-serif)',
+        fontSize: (panelStyle && panelStyle.fontSize) || 'var(--composer-font-size, 1rem)',
+        width: panelStyle && panelStyle.width,
+    };
+
+    const panelDetailStyle = {
         color: colorScheme === 'dark' ? '#ececf1' : '#0d0d0d',
         background: colorScheme === 'dark' ? '#2f2f2f' : '#fff',
         borderColor: colorScheme === 'dark' ? '#ffffff26' : '#0000001a',
         fontFamily: (panelStyle && panelStyle.fontFamily) || 'var(--font-sans, Inter, Noto Sans KR, Apple SD Gothic Neo, Arial, sans-serif)',
         fontSize: (panelStyle && panelStyle.fontSize) || 'var(--composer-font-size, 1rem)',
         width: panelStyle && panelStyle.width,
+        overflow: 'hidden',
+        '--tw-shadow': colorScheme === 'dark' ? '0px 4px 12px 0px var(--tw-shadow-color,var(--shadow-color-1,#0000001a)),inset 0px 0px 1px 0px var(--tw-shadow-color,var(--shadow-color-2,#fff3))' : '0px 4px 4px 0px var(--tw-shadow-color,var(--shadow-color-1,#0000000a)),0px 0px 1px 0px var(--tw-shadow-color,var(--shadow-color-2,#0000009e))',
+        boxShadow: 'var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)',
     };
 
     // TODO: 최대 height 작동하게 "해"
@@ -120,15 +129,15 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
 
     // TODO: CSS 분리
     return (
-        <div className="click-analysis-panel" style={{...panelStyle, ...fallbackStyle}} data-composer-surface="true">
+        <div className="click-analysis-panel" style={{...panelStyle, ...panelDetailStyle}}>
             <div className="panel-header" style={fallbackStyle} ref={headerRef}>
                 <h3>GPT Prompt Analysis</h3>
                 <button className="close-btn" onClick={onClose}>×</button>
             </div>
             <div className="panel-body" ref={bodyRef} 
-                style={{padding: 0, height: bodyHeight, overflow: 'auto', background: 'inherit'}}>
+                style={{padding: 0, height: bodyHeight, overflow: 'auto'}}>
                 <div className="text-container" 
-                    style={{...fallbackStyle, margin: 0, whiteSpace: 'pre-wrap', border: 'none', background: 'none', boxShadow: 'none'}}
+                    style={{...fallbackStyle, margin: 0, whiteSpace: 'pre-wrap'}}
                     dangerouslySetInnerHTML={{ __html: getColoredText }}>
                 </div>
             </div>
@@ -148,9 +157,12 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
                                 borderRadius: '20px',
                                 cursor: 'pointer',
                                 background: enabledTags.includes(tag) ? 
-                                    TAG_COLORS[tag] : 'transparent',
-                                color: enabledTags.includes(tag) ? '#fff' : '#666',
-                                transition: 'all 0.2s ease'
+                                    TAG_COLORS[tag] : panelDetailStyle.background,
+                                color: enabledTags.includes(tag) ? '#fff' : panelDetailStyle.color,
+                                transition: 'all 0.2s ease',
+                                borderColor: panelDetailStyle.borderColor,
+                            '--tw-shadow': panelDetailStyle['--tw-shadow'],
+                            boxShadow: panelDetailStyle.boxShadow,
                             }}
                         >
                             <span 
@@ -167,17 +179,26 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
                     ))}
                 </div>
 
-                <button className="apply-all-btn" 
-                    onClick={handleApplyAll}
-                    background = {fallbackStyle.background}
-                    borderColor = {fallbackStyle.borderColor}>
+                <button className="apply-all-btn" onClick={handleApplyAll}
+                    style={{
+                        background: panelDetailStyle.background,
+                        borderColor: panelDetailStyle.borderColor,
+                        '--tw-shadow': panelDetailStyle['--tw-shadow'],
+                        boxShadow: panelDetailStyle.boxShadow,
+                    }}
+                >
                     <h3>Apply</h3>
                 </button>
 
                 <button className="analysis-btn" 
                     onClick={onAnalyze} 
                     disabled={loading}
-                    borderColor = {fallbackStyle.borderColor}>
+                    style={{
+                        borderColor: panelDetailStyle.borderColor,
+                        '--tw-shadow': panelDetailStyle['--tw-shadow'],
+                        boxShadow: panelDetailStyle.boxShadow,
+                    }}
+                >
                     <h3>
                         {loading ? 'Analyzing...' : 'Analyze'}
                     </h3>
