@@ -79,8 +79,9 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
     };
 
     const fallbackStyle = {
-        color: (panelStyle && panelStyle.color) || 'var(--token-text-primary, #222)',
-        background: (panelStyle && panelStyle.background) || 'var(--token-main-surface-primary, #fff)',
+        color: 'var(--text-primary, #222)',
+        background: 'var(--main-surface-primary, #fff)',
+        borderColor: 'var(--border-default, #d1d5db)',
         fontFamily: (panelStyle && panelStyle.fontFamily) || 'var(--font-sans, Inter, Noto Sans KR, Apple SD Gothic Neo, Arial, sans-serif)',
         fontSize: (panelStyle && panelStyle.fontSize) || 'var(--composer-font-size, 1rem)',
         width: panelStyle && panelStyle.width,
@@ -96,7 +97,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
 
     // TODO: CSS 분리
     return (
-        <div className="click-analysis-panel" style={{...panelStyle, ...fallbackStyle}}>
+        <div className="click-analysis-panel" style={{...panelStyle, ...fallbackStyle}} data-composer-surface="true">
             <div className="panel-header" style={fallbackStyle} ref={headerRef}>
                 <h3>GPT Prompt Analysis</h3>
                 <button className="close-btn" onClick={onClose}>×</button>
@@ -145,14 +146,14 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
 
                 <button className="apply-all-btn" 
                     onClick={handleApplyAll}>
-                    <h3>apply</h3>
+                    <h3>Apply</h3>
                 </button>
 
                 <button className="analysis-btn" 
                     onClick={onAnalyze} 
                     disabled={loading}>
                     <h3>
-                        {loading ? 'analyzing...' : 'analyze'}
+                        {loading ? 'Analyzing...' : 'Analyze'}
                     </h3>
                 </button>
             </div>

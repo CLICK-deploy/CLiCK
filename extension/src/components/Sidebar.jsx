@@ -134,7 +134,7 @@ export default function Sidebar() {
             <div className="group/sidebar-expando-section mb-[var(--sidebar-expanded-section-margin-bottom)]">
                 <button aria-expanded="true" className="text-token-text-tertiary flex w-full items-center justify-start gap-0.5 px-4 py-1.5">
                     <h2 className="__menu-label" data-no-spacing="true">
-                        Prompt
+                        Recommend Prompt 
                     </h2>
                 </button>
 
