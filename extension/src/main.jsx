@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 
 import Sidebar from './components/Sidebar';
 import PromptInput from './components/PromptInput';
+import Settings from './components/Settings';
 import './App.css'; 
 
 /*
@@ -46,6 +47,34 @@ function injectSidebar() {
                 <Sidebar />
             </React.StrictMode>
         );
+    }
+}
+
+function injectSettings() {
+    // 공유하기 버튼 찾기 (스크린샷의 버튼)
+    const shareButton = document.querySelector('[data-testid="share-chat-button"]');
+    
+    if (shareButton && !document.querySelector('#click-settings-root')) {
+        // Settings 컴포넌트를 담을 루트 생성
+        const settingsRoot = document.createElement('div');
+        settingsRoot.id = 'click-settings-root';
+        
+        // 공유하기 버튼의 부모 컨테이너 찾기
+        const parentContainer = shareButton.parentElement;
+        
+        if (parentContainer) {
+            // 공유하기 버튼 바로 앞에 삽입
+            parentContainer.insertBefore(settingsRoot, shareButton);
+            
+            const root = ReactDOM.createRoot(settingsRoot);
+            root.render(
+                <React.StrictMode>
+                    <Settings />
+                </React.StrictMode>
+            );
+            
+            console.log('[Settings] CLiCK 설정 버튼 삽입 완료');
+        }
     }
 }
 
@@ -93,6 +122,7 @@ async function ensureUiInjected() {
     if (isLoggedIn) {
         injectSidebar();
         injectPromptTools();
+        injectSettings();
     }
 }
 
@@ -115,7 +145,7 @@ const observer = new MutationObserver(async () => {
     if (isLoggedIn) {
         injectSidebar();
         injectPromptTools();
-        
+        injectSettings();
         // 폴백 인터벌 시작(계속 감시)
         if (!clickUiInterval) {
             clickUiInterval = setInterval(ensureUiInjected, 300);
