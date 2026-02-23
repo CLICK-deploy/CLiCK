@@ -79,6 +79,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true; // 비동기 응답 대기
     }
 
+    // 로그인 요청 (기존 사용자)
     if (message.type === "LOGIN") {
         (async () => {
             try {
@@ -113,9 +114,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         },
                         body: JSON.stringify({ 
                             userId: message.userId,
-                            password: message.password,
-                            ageGroup: message.ageGroup,
-                            gender: message.gender
+                            password: message.password
                         }),
                     }
                 );
@@ -135,9 +134,68 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     loginTime: Date.now()
                 });
 
+                // 모든 ChatGPT 탭에 로그인 성공 메시지 전송
+                chrome.tabs.query({ url: ["https://chatgpt.com/*", "https://chat.openai.com/*"] }, (tabs) => {
+                    tabs.forEach(tab => {
+                        chrome.tabs.sendMessage(tab.id, { type: "LOGIN_SUCCESS" });
+                    });
+                });
+
                 sendResponse({ success: true, userID: data.userID || message.userId }); 
             } catch (error) {
                 console.error("로그인 API 요청 실패:", error);
+                sendResponse({ success: false, error: error.message }); 
+            }
+        })();
+
+        return true;
+    }
+
+    // 회원가입 요청 (신규 사용자)
+    if (message.type === "SIGNUP") {
+        (async () => {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/signup`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ 
+                            userId: message.userId,
+                            password: message.password,
+                            ageGroup: message.ageGroup,
+                            gender: message.gender
+                        }),
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Signup failed with status: ${response.status}`
+                    );
+                }
+
+                const data = await response.json();
+                
+                // 회원가입 성공 시 자동 로그인
+                await chrome.storage.local.set({
+                    userID: data.userID || message.userId,
+                    isLoggedIn: true,
+                    loginTime: Date.now()
+                });
+
+                // 모든 ChatGPT 탭에 로그인 성공 메시지 전송
+                chrome.tabs.query({ url: ["https://chatgpt.com/*", "https://chat.openai.com/*"] }, (tabs) => {
+                    tabs.forEach(tab => {
+                        chrome.tabs.sendMessage(tab.id, { type: "LOGIN_SUCCESS" });
+                    });
+                });
+
+                sendResponse({ success: true, userID: data.userID || message.userId }); 
+            } catch (error) {
+                console.error("회원가입 API 요청 실패:", error);
                 sendResponse({ success: false, error: error.message }); 
             }
         })();
@@ -187,10 +245,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
+    // 회원가입 페이지 열기 요청
+    if (message.type === "OPEN_SIGNUP_PAGE") {
+        chrome.tabs.create({
+            url: chrome.runtime.getURL('signin.html')
+        });
+        sendResponse({ success: true });
+        return true;
+    }
+
+    // 닉네임 중복 확인 요청
     if (message.type === "CHECK_DUPLICATE") {
     (async () => {
         try {
-            console.log("닉네임 중복 확인 요청:", message.userId);
 
             // 테스트계정
             if (message.userId === "test") {

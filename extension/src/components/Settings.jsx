@@ -68,8 +68,6 @@ export default function Settings() {
                             data-orientation="vertical" 
                             data-radix-collection-item
                             onClick={() => {
-                                console.log('로그아웃 클릭');
-                                setIsOpen(false);
                             }}
                         >
                             <div className="flex items-center justify-center group-disabled:opacity-50 group-data-disabled:opacity-50 icon">
@@ -87,7 +85,7 @@ export default function Settings() {
                             data-orientation="vertical" 
                             data-radix-collection-item
                             onClick={() => {
-                                console.log('로그인 클릭');
+                                chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
                                 setIsOpen(false);
                             }}
                         >
@@ -97,6 +95,25 @@ export default function Settings() {
                                 </svg>
                             </div>
                             로그인
+                        </div>
+
+                        <div 
+                            role="menuitem" 
+                            tabIndex={0} 
+                            className="group __menu-item hoverable gap-1.5" 
+                            data-orientation="vertical" 
+                            data-radix-collection-item
+                            onClick={() => {
+                                chrome.runtime.sendMessage({ type: "OPEN_SIGNUP_PAGE" });
+                                setIsOpen(false);
+                            }}
+                        >
+                            <div className="flex items-center justify-center group-disabled:opacity-50 group-data-disabled:opacity-50 icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' aria-hidden="true" className="icon">
+                                    <use href="/cdn/assets/sprites-core-jxe2m7va.svg#427dd9" fill="currentColor"></use>
+                                </svg>
+                            </div>
+                            회원가입
                         </div>
                     </div>
                 </div>

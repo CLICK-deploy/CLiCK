@@ -72,8 +72,6 @@ function injectSettings() {
                     <Settings />
                 </React.StrictMode>
             );
-            
-            console.log('[Settings] CLiCK 설정 버튼 삽입 완료');
         }
     }
 }

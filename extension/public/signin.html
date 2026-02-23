@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>사용자 정보 입력 - CLiCK</title>
+
+  </head>
+  <style> 
+    /* 개인정보 동의 체크박스 input-group 가운데 정렬 */
+  .input-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* 개인정보 동의 문구 라벨 스타일 */
+  .agree-all-label {
+    font-size: 13px;
+    color: var(--text-color);
+    margin-bottom: 0;
+  }
+
+  /* 약관 링크 스타일 */
+  .terms-link {
+    color: #19c37d;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .terms-link:hover {
+    text-decoration: underline;
+  }
+  /* 자세히보기(details) 폰트 크기 조정 */
+  details .prose.prose-sm {
+    font-size: 10px !important;
+  }
+
+  /* 커스텀 체크박스 공통 스타일 */
+  .custom-checkbox-label {
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  /* custom checkbox: hide native box (accessible) and use span for visuals */
+  .custom-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    position: absolute; /* remove from flow so span controls layout */
+    left: 0;
+    top: 0;
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    padding: 0;
+    opacity: 0; /* visually hidden but still focusable */
+    cursor: pointer;
+  }
+
+  .custom-checkbox:focus + .custom-checkbox-span {
+    box-shadow: 0 0 0 3px rgba(25, 195, 125, 0.12);
+    border-color: #19c37d;
+  }
+
+  .custom-checkbox-span {
+    display: inline-block; /* controls layout */
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--input-background);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .custom-checkbox:checked + .custom-checkbox-span {
+    background: #19c37d;
+    border: 2px solid #19c37d;
+  }
+
+  .custom-checkbox-span::after {
+    content: "";
+    display: block;
+    width: 10px;
+    height: 6px;
+    border-left: 2.5px solid #fff;
+    border-bottom: 2.5px solid #fff;
+    transform: rotate(-45deg) scale(0);
+    opacity: 0;
+    transition: all 0.15s;
+  }
+
+  .custom-checkbox:checked + .custom-checkbox-span::after {
+    transform: rotate(-45deg) scale(1);
+    opacity: 1;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .custom-checkbox {
+      border-color: var(--border-color);
+      background: var(--input-background);
+    }
+    .custom-checkbox-span {
+      background: var(--input-background);
+    }
+    .custom-checkbox:checked + .custom-checkbox-span {
+      background: #19c37d;
+      border: 2px solid #19c37d;
+    }
+  }
+  /* 라이트/다크 모드에 따른 색상 변수 정의 */
+  :root {
+    --background-color: #ffffff;
+    --container-color: #f7f7f8;
+    --input-background: #ffffff;
+    --text-color: #000000;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --placeholder-color: rgba(0, 0, 0, 0.5);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background-color: #343541;
+      --container-color: #444654;
+      --input-background: #40414f;
+      --text-color: #ffffff;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --shadow-color: rgba(0, 0, 0, 0.2);
+      --placeholder-color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  /* 전체 배경 및 폰트 설정 */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--background-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    color: var(--text-color);
+  }
+
+  /* 폼 컨테이너 스타일 */
+  .container {
+    background-color: var(--container-color);
+    padding: 40px;
+    padding-right: 30px;
+    padding-left: 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px var(--shadow-color);
+    width: 100%;
+    max-width: 420px;
+    /* height: 420px; */
+    box-sizing: border-box;
+    border: 1px solid var(--border-color);
+  }
+
+  /* 로고 영역 스타일 */
+  .logo-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 30px;
+  }
+
+  .logo-icon {
+    /* icon.png (검은색)을 CLiCK.png의 회색 Mac Command 키 심볼처럼 보이도록 색상 조정 */
+    filter: invert(30%) sepia(0%) saturate(0%) hue-rotate(180deg) brightness(50%)
+      contrast(100%);
+    width: 30px;
+    height: 30px;
+    margin-right: 5px;
+  }
+
+  .logo-text {
+    width: 100px; /* 로고 텍스트 크기 조정 */
+    height: auto;
+    /* logo.png 파일의 투명 배경을 고려하여 그대로 사용 */
+  }
+
+  /* 닉네임 입력 그룹 스타일 */
+  .nickname-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 80%;
+  }
+
+  .nickname-group input {
+    flex: 1;
+    width: 100%;
+  }
+
+  /* 중복확인 버튼 스타일 */
+  .check-duplicate-button {
+    padding: 10px 15px;
+    background-color: #19c37d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+
+  .check-duplicate-button:hover {
+    background-color: #1a8870;
+    transform: translateY(-1px);
+  }
+
+  .check-duplicate-button.checked {
+    background-color: #19c37d;
+  }
+
+  .check-duplicate-button.checked:hover {
+    background-color: #1a8870;
+  }
+
+  .check-duplicate-button:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* 입력 필드 그룹 간격 */
+  .input-group {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* 입력 필드 그룹 간격 */
+  .input-group {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* 닉네임 입력 스타일 */
+  input[type="text"] {
+    width: 80%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    transition: all 0.3s ease;
+  }
+
+  /* 닉네임 입력 스타일 */
+  input[type="password"] {
+    width: 80%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    transition: all 0.3s ease;
+  }
+
+  /* 자동완성 스타일 수정 */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text-color);
+    -webkit-box-shadow: 0 0 0px 1000px var(--input-background) inset;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #ffffff;
+      -webkit-box-shadow: 0 0 0px 1000px #40414f inset;
+    }
+  }
+
+  /* 드롭다운 메뉴 스타일 */
+  select {
+    width: 80%;
+    padding: 10px;
+    padding-right: 25px; /* 화살표 공간 확보 */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 5px center;
+  }
+
+  /* placeholder 텍스트 스타일 */
+  input::placeholder {
+    color: var(--placeholder-color);
+  }
+
+  /* 시작하기 버튼 스타일 */
+  .start-button {
+    width: 60%;
+    padding: 10px;
+    background-color: #19c37d; /* ChatGPT 스타일의 녹색 버튼 */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 0;
+    line-height: 22px; /* 체크박스 높이와 동일하게 맞춤 */
+    font-weight: 500;
+  }
+
+  .start-button:hover {
+    background-color: #1a8870; /* 호버 시 색상 어둡게 */
+    transform: translateY(-1px);
+  }
+
+  /* 강제: 폼 내부의 시작하기 버튼 중앙 정렬 (우선순위 높게 적용) */
+  .user-data-form .start-button {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* 드롭다운의 첫 번째(선택됨/비활성화) 옵션의 텍스트 색상을 플레이스홀더처럼 보이도록 설정 */
+  select option[disabled]:first-child {
+    color: var(--placeholder-color);
+  }
+
+  /* 드롭다운 옵션 스타일 */
+  select option {
+    background-color: var(--input-background);
+    color: var(--text-color);
+  }
+
+  /* 다크/라이트 모드에 따른 드롭다운 화살표 색상 조정 */
+  @media (prefers-color-scheme: light) {
+    select {
+      background-image: url('data:image/svg+xml;utf8,<svg fill="%23000000" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    select {
+      background-image: url('data:image/svg+xml;utf8,<svg fill="%23FFFFFF" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    }
+  }
+
+  /* 입력 필드 포커스 효과 */
+  input:focus,
+  select:focus {
+    outline: none;
+    border-color: #19c37d;
+    box-shadow: 0 0 0 1px rgba(25, 195, 125, 0.3);
+  }
+
+  /* 커스텀 알림창 스타일 */
+  .custom-alert {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .alert-content {
+    background-color: var(--container-color);
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 300px;
+    text-align: center;
+    box-shadow: 0 4px 15px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .alert-content p {
+    margin: 0 0 20px 0;
+    color: var(--text-color);
+    font-size: 14px;
+  }
+
+  .alert-content button {
+    background-color: #19c37d;
+    color: white;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+
+  .alert-content button:hover {
+    background-color: #1a8870;
+    transform: translateY(-1px);
+  }
+  </style>
+
+  <body>
+    <!-- 커스텀 알림창 -->
+    <div id="custom-alert" class="custom-alert">
+      <div class="alert-content">
+        <p id="alert-message"></p>
+        <button type="button" id="alert-close">확인</button>
+      </div>
+    </div>
+
+    <div class="container">
+      <form class="user-data-form" novalidate>
+        <div class="logo-area">
+          <img src="icon.png" alt="CLiCK 아이콘" class="logo-icon" />
+          <img src="logo.png" alt="CLiCK 로고 텍스트" class="logo-text" />
+        </div>
+
+        <div class="input-group">
+          <div class="nickname-group">
+            <input
+              type="text"
+              id="nickname"
+              name="nickname"
+              placeholder="닉네임"
+              required
+            />
+            <button type="button" class="check-duplicate-button" id="check-duplicate">
+              중복확인
+            </button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="비밀번호"
+            required
+          />
+        </div>
+
+        <div class="input-group">
+          <input
+            type="password"
+            id="passwordCheck"
+            name="passwordCheck"
+            placeholder="비밀번호 확인"
+            required
+          />
+        </div>
+
+        <div class="input-group">
+          <select id="age_group" name="age_group" required>
+            <option value="" disabled selected>연령대</option>
+            <option value="under_10">10세 미만</option>
+            <option value="10s">10대</option>
+            <option value="20s">20대</option>
+            <option value="30s">30대</option>
+            <option value="40s">40대</option>
+            <option value="50s">50대</option>
+            <option value="over_60">60세 이상</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <select id="gender" name="gender" required>
+            <option value="" disabled selected>성별</option>
+            <option value="male">남자</option>
+            <option value="female">여자</option>
+            <option value="not_disclosed">선택 안함</option>
+          </select>
+        </div>
+
+        <div
+          class="input-group"
+          style="
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+          "
+        >
+          <label class="custom-checkbox-label" style="margin-bottom: 0">
+            <input
+              type="checkbox"
+              id="agreeAllInfo"
+              name="agreeAllInfo"
+              class="custom-checkbox"
+              required
+            />
+            <span class="custom-checkbox-span"></span>
+          </label>
+          <span class="agree-all-label">
+            <a href="agree.html" target="_blank" class="terms-link">상기 내용</a
+            >에 동의합니다.
+          </span>
+        </div>
+
+        <button type="submit" class="start-button">시작하기</button>
+      </form>
+    </div>
+    <script src="signin.js"></script>
+  </body>
+</html>

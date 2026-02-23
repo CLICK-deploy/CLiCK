@@ -156,9 +156,9 @@
   /* 폼 컨테이너 스타일 */
   .container {
     background-color: var(--container-color);
-    padding: 40px;
-    padding-right: 30px;
-    padding-left: 30px;
+    padding: 60px;
+    padding-right: 15px;
+    padding-left: 15px;
     border-radius: 15px;
     box-shadow: 0 4px 15px var(--shadow-color);
     width: 100%;
@@ -173,7 +173,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 30px;
+    margin-bottom: 50px;
   }
 
   .logo-icon {
@@ -239,15 +239,7 @@
 
   /* 입력 필드 그룹 간격 */
   .input-group {
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: center;
-    width: 100%;
-  }
-
-  /* 입력 필드 그룹 간격 */
-  .input-group {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
     display: flex;
     justify-content: center;
     width: 100%;
@@ -465,9 +457,6 @@
               placeholder="닉네임"
               required
             />
-            <button type="button" class="check-duplicate-button" id="check-duplicate">
-              중복확인
-            </button>
           </div>
         </div>
 
@@ -481,38 +470,6 @@
           />
         </div>
 
-        <div class="input-group">
-          <input
-            type="password"
-            id="passwordCheck"
-            name="passwordCheck"
-            placeholder="비밀번호 확인"
-            required
-          />
-        </div>
-
-        <div class="input-group">
-          <select id="age_group" name="age_group" required>
-            <option value="" disabled selected>연령대</option>
-            <option value="under_10">10세 미만</option>
-            <option value="10s">10대</option>
-            <option value="20s">20대</option>
-            <option value="30s">30대</option>
-            <option value="40s">40대</option>
-            <option value="50s">50대</option>
-            <option value="over_60">60세 이상</option>
-          </select>
-        </div>
-
-        <div class="input-group">
-          <select id="gender" name="gender" required>
-            <option value="" disabled selected>성별</option>
-            <option value="male">남자</option>
-            <option value="female">여자</option>
-            <option value="not_disclosed">선택 안함</option>
-          </select>
-        </div>
-
         <div
           class="input-group"
           style="
@@ -521,6 +478,7 @@
             justify-content: center;
             gap: 10px;
             margin-bottom: 25px;
+            margin-top: 40px;
           "
         >
           <label class="custom-checkbox-label" style="margin-bottom: 0">
