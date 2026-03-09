@@ -2,8 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 
 export default function Settings() {
     const [isOpen, setIsOpen] = useState(false);
+    const [popupPos, setPopupPos] = useState({ top: 0, right: 0 });
     const popoverRef = useRef(null);
     const buttonRef = useRef(null);
+
+    const getButtonPosition = () => {
+        if (buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            return {
+                top: rect.bottom + 8,
+                right: window.innerWidth - rect.right,
+            };
+        }
+        return { top: 0, right: 0 };
+    };
 
     // 외부 클릭 감지하여 팝업 닫기
     useEffect(() => {
@@ -28,6 +40,9 @@ export default function Settings() {
     }, [isOpen]);
 
     const togglePopover = () => {
+        if (!isOpen) {
+            setPopupPos(getButtonPosition());
+        }
         setIsOpen(!isOpen);
     };
 
@@ -46,7 +61,7 @@ export default function Settings() {
 
             {/* 팝업 메뉴 */}
             {isOpen && (
-                <div data-radix-popper-content-wrapper dir="ltr" style={{position: 'fixed', left: '270px', top: '0px', transform: 'translate(641.5px, 44px)', minWidth: 'max-content', '--radix-popper-transform-origin': '100% 0px', willChange: 'transform', zIndex: 49, '--radix-popper-available-width': '821.0000000000001px', '--radix-popper-available-height': '728px', '--radix-popper-anchor-width': '36px', '--radix-popper-anchor-height': '36px'}}>
+                <div data-radix-popper-content-wrapper dir="ltr" style={{ position: 'fixed', top: popupPos.top, right: popupPos.right, minWidth: 'max-content', zIndex: 49 }}>
                     <div 
                         ref={popoverRef}
                         data-side="bottom" 
