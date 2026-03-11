@@ -89,7 +89,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         if (!result?.full_suggestion) return;
         
         // 활성화된 태그의 교정사항만 적용
-        let finalText = result.original_text;
+        let finalText = source;
         Object.entries(result.patches || {}).forEach(([tag, patches]) => {
             if (Array.isArray(patches) && enabledTags.includes(tag)) {
                 patches.forEach(patch => {
