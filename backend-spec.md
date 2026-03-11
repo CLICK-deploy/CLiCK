@@ -180,7 +180,7 @@
     -   `error`: 목록 조회 실패 원인을 설명하는 메시지입니다.
 
 
-### 3.3. 로그인 API
+### 3.3. 회원가입 API
 
 사용자 인증을 처리하고, 인증 성공 시 사용자 ID를 반환합니다.
 
@@ -262,7 +262,91 @@
     -   이후 모든 API 요청(`ANALYZE_PROMPT`, `FETCH_RECOMMENDED_PROMPTS`)에서 이 `userID`를 사용합니다.
     -   로그아웃 시 클라이언트는 Chrome Storage에서 `userID`와 로그인 상태를 삭제합니다.
 
-### 3.4. 닉네임 중복 확인 API
+### 3.4. 로그인 API
+
+사용자 인증을 처리하고, 인증 성공 시 사용자 ID를 반환합니다.
+
+-   Endpoint: `/api/login`
+-   HTTP Method: `POST`
+-   Description: 기존 사용자의 닉네임과 패스워드를 받아 인증을 수행합니다. 인증 성공 시 userID를 반환하며, 클라이언트는 이를 Chrome Storage에 저장하여 이후 모든 API 요청에 사용합니다.
+
+#### 요청 (Input)
+
+-   Body:
+    ```json
+    {
+        "userId": "string",
+        "password": "string"
+    }
+    ```
+-   상세:
+
+    -   `userId`: 사용자의 닉네임입니다.
+    -   `password`: 사용자의 패스워드입니다.
+
+-   예시:
+
+    ```json
+    {
+        "userId": "복지관빨대도둑",
+        "password": "mySecurePassword123"
+    }
+    ```
+
+#### 응답 (Output)
+
+-   성공 (200 OK):
+    ```json
+    {
+        "userID": "string",
+        "message": "Login successful"
+    }
+    ```
+-   상세:
+
+    -   `userID`: 인증된 사용자의 고유 식별자입니다.
+    -   `message`: 로그인 성공 메시지입니다. (선택사항)
+
+-   예시:
+
+    ```json
+    {
+        "userID": "복지관빨대도둑",
+        "message": "Login successful"
+    }
+    ```
+
+-   실패 (401 Unauthorized):
+    ```json
+    {
+        "error": "Invalid credentials"
+    }
+    ```
+-   실패 (404 Not Found):
+    ```json
+    {
+        "error": "User not found"
+    }
+    ```
+-   실패 (500 Internal Server Error):
+    ```json
+    {
+        "error": "Internal server error"
+    }
+    ```
+-   상세:
+    -   `error`: 로그인 실패 원인을 설명하는 메시지입니다.
+        -   `"Invalid credentials"`: 잘못된 패스워드
+        -   `"User not found"`: 존재하지 않는 사용자
+        -   `"Internal server error"`: 서버 내부 오류
+
+-   note: 
+    -   클라이언트는 성공 시 `userID`를 Chrome Storage에 저장합니다.
+    -   이후 모든 API 요청(`ANALYZE_PROMPT`, `FETCH_RECOMMENDED_PROMPTS`)에서 이 `userID`를 사용합니다.
+    -   로그아웃 시 클라이언트는 Chrome Storage에서 `userID`와 로그인 상태를 삭제합니다.
+    -   회원가입 API와 달리 ageGroup과 gender는 필요하지 않습니다.
+
+### 3.5. 닉네임 중복 확인 API
 
 로그인 전 사용자가 입력한 닉네임이 사용 가능한지 확인합니다.
 
@@ -343,3 +427,4 @@
     -   사용자가 닉네임을 수정하면 중복 확인 상태가 초기화되어 다시 확인해야 합니다.
 
 ---
+
