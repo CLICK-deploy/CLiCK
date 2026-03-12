@@ -95,11 +95,8 @@ export default function Sidebar() {
 
     // 버튼 클릭 및 엔터 키 감지 
     useEffect(() => {
-        const triggerSubmit = async () => {
-            const textarea = document.querySelector('#prompt-textarea');
-            if (!textarea.innerText) return;
-
-            const promptText = textarea.innerText.trim();
+        const triggerSubmit = async (promptText) => {
+            if (!promptText) return;
             console.log("메시지 제출 감지됨! -> 프롬프트 갱신 요청");
 
             // 현재 입력 내용을 백엔드에 저장 (이후 추천의 근거 데이터)
@@ -125,24 +122,26 @@ export default function Sidebar() {
         const handleGlobalClick = (e) => {
             const submitBtn = e.target.closest('#composer-submit-button');
             if (submitBtn && !submitBtn.disabled) {
-                triggerSubmit();
+                const textarea = document.querySelector('#prompt-textarea');
+                const text = textarea?.innerText.trim() || '';
+                triggerSubmit(text);
             }
         };
 
-        // 엔터키 핸들러
-        const handleKeyPress = (e) => {
-            // textarea에서 Shift 없이 Enter만 눌렀을 때
+        // 엔터키 핸들러 — keydown을 사용해야 ChatGPT가 textarea를 비우기 전에 캡처 가능
+        const handleKeyDown = (e) => {
             if (e.target.id === 'prompt-textarea' && e.key === 'Enter' && !e.shiftKey) {
-                triggerSubmit();
+                const text = e.target.innerText.trim();
+                triggerSubmit(text);
             }
         };
 
         document.addEventListener('click', handleGlobalClick, true);
-        document.addEventListener('keypress', handleKeyPress, true);
+        document.addEventListener('keydown', handleKeyDown, true);
 
         return () => {
             document.removeEventListener('click', handleGlobalClick, true);
-            document.removeEventListener('keypress', handleKeyPress, true);
+            document.removeEventListener('keydown', handleKeyDown, true);
         };
     }, []);
 

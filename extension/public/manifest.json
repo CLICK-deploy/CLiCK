@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "ChatGPT UI 개선 확장 프로그램",
   "permissions": ["storage", "tabs"],
-  "host_permissions": ["http://localhost:3001/*"],
+  "host_permissions": ["http://localhost:3001/*", "http://54.253.211.53:8000/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
