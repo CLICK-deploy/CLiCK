@@ -63,13 +63,18 @@ export default function Sidebar() {
 
                 console.log('[Sidebar] 백엔드 응답:', response);
 
-                // 응답이 { chatID: [...], global: [...] } 객체이거나 배열일 수 있음
+                // 응답이 { chatID: { title, content } } 단일 객체이거나 배열일 수 있음
                 let rawData = [];
                 if (Array.isArray(response)) {
                     rawData = response;
                 } else if (response && typeof response === 'object') {
                     const candidates = response[chatID] || response.global || [];
-                    rawData = Array.isArray(candidates) ? candidates : [];
+                    if (Array.isArray(candidates)) {
+                        rawData = candidates;
+                    } else if (candidates && typeof candidates === 'object' && Object.keys(candidates).length > 0) {
+                        // 백엔드가 단일 객체 { title, content } 로 반환하는 경우
+                        rawData = [candidates];
+                    }
                 }
 
                 const formattedData = rawData.map((item, index) => ({
@@ -92,7 +97,7 @@ export default function Sidebar() {
     useEffect(() => {
         const triggerSubmit = async () => {
             const textarea = document.querySelector('#prompt-textarea');
-            if (!textarea.innerText.trim()) return;
+            if (!textarea.innerText) return;
 
             const promptText = textarea.innerText.trim();
             console.log("메시지 제출 감지됨! -> 프롬프트 갱신 요청");
