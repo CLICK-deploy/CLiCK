@@ -175,7 +175,8 @@ export default function PromptInput() {
         try {
             const currentUserID = await getUserID();
             if (!currentUserID) {
-                console.warn('userID가 올바르지 않습니다.');
+                alert('로그인이 필요합니다.');  // 또는 로그인 페이지로 이동
+                chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
                 setLoading(false);
                 return;
             }

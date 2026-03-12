@@ -43,6 +43,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true; // 비동기 sendResponse를 사용하려면 반드시 true를 반환
     }
 
+    // 유저 입력 프롬프트 히스토리 저장
+    if (message.type === "TRACE_INPUT") {
+        (async () => {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/trace_input`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            userID: message.userID,
+                            chatID: message.chatID,
+                            prompt: message.prompt,
+                        }),
+                    }
+                );
+                if (!response.ok) throw new Error(`trace_input failed: ${response.status}`);
+                const data = await response.json();
+                sendResponse(data);
+            } catch (error) {
+                console.error("trace_input 요청 실패:", error);
+                sendResponse({ error: error.message });
+            }
+        })();
+        return true;
+    }
+
     // 추천 프롬프트 목록 조회 요청
     if (message.type === "FETCH_RECOMMENDED_PROMPTS") {
         (async () => {

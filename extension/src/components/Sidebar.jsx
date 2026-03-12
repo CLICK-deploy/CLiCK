@@ -29,13 +29,10 @@ export default function Sidebar() {
         }
     };
 
-    // 현재 채팅방 ID 찾기
+    // 현재 채팅방 ID 찾기 (URL에서 직접 읽기)
     const findCurrentChatId = () => {
-        const historyContainer = document.querySelector('#history');
-        if (!historyContainer) return null;
-
-        const activeElement = historyContainer.querySelector('a[data-active]');
-        return activeElement ? activeElement.getAttribute('href') : null;
+        const path = window.location.pathname;
+        return path.startsWith('/c/') ? path : null;
     };
 
     // 백엔드에서 프롬프트 가져옴
@@ -43,13 +40,16 @@ export default function Sidebar() {
         const fetchPrompts = async () => {
             try {
                 const currentUserID = await getUserID();
+                console.log('[Sidebar] userID:', currentUserID);
                 if (!currentUserID) {
-                    console.warn('userID가 올바르지 않습니다.');
+                    console.warn('[Sidebar] 로그인되지 않아 추천 프롬프트 요청 생략');
                     return;
                 }
 
                 const chatID = findCurrentChatId();
+                console.log('[Sidebar] chatID:', chatID);
                 if (!chatID) {
+                    console.log('[Sidebar] chatID 없음 -> 추천 프롬프트 요청 생략');
                     return;
                 }
 
@@ -60,6 +60,8 @@ export default function Sidebar() {
                         (res) => res && res.error ? reject(res.error) : resolve(res)
                     );
                 });
+
+                console.log('[Sidebar] 백엔드 응답:', response);
 
                 // 응답이 { chatID: [...], global: [...] } 객체이거나 배열일 수 있음
                 let rawData = [];
@@ -79,7 +81,7 @@ export default function Sidebar() {
                 // 기존 목록에 새 항목 추가 후 MAX_PROMPTS 초과분은 오래된 것부터 제거
                 setRecommendedPrompts(prev => [...prev, ...formattedData].slice(-MAX_PROMPTS));
             } catch (error) {
-                console.error('프롬프트 로딩 에러:', error);
+                console.error('[Sidebar] 프롬프트 로딩 에러:', error);
             }
         };
 
@@ -88,11 +90,29 @@ export default function Sidebar() {
 
     // 버튼 클릭 및 엔터 키 감지 
     useEffect(() => {
-        const triggerSubmit = () => {
+        const triggerSubmit = async () => {
             const textarea = document.querySelector('#prompt-textarea');
-            if (!textarea.innerText) return;
+            if (!textarea.innerText.trim()) return;
 
+            const promptText = textarea.innerText.trim();
             console.log("메시지 제출 감지됨! -> 프롬프트 갱신 요청");
+
+            // 현재 입력 내용을 백엔드에 저장 (이후 추천의 근거 데이터)
+            try {
+                const currentUserID = await getUserID();
+                const chatID = findCurrentChatId();
+                if (currentUserID && chatID) {
+                    chrome.runtime.sendMessage({
+                        type: "TRACE_INPUT",
+                        userID: currentUserID,
+                        chatID,
+                        prompt: promptText,
+                    });
+                }
+            } catch (e) {
+                console.error('[Sidebar] trace_input 전송 실패:', e);
+            }
+
             setSubmitCount(prev => prev + 1);
         };
 

@@ -83,6 +83,8 @@ export default function Settings() {
                             data-orientation="vertical" 
                             data-radix-collection-item
                             onClick={() => {
+                                chrome.runtime.sendMessage({ type: "LOGOUT" });
+                                setIsOpen(false);
                             }}
                         >
                             <div className="flex items-center justify-center group-disabled:opacity-50 group-data-disabled:opacity-50 icon">
