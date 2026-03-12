@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Trailp from '../../images/trailing-pair.svg?react';
 
+const MAX_PROMPTS = 2;
+
 export default function Sidebar() {
     const [recommendedPrompts, setRecommendedPrompts] = useState([]);
     const [submitCount, setSubmitCount] = useState(0); 
@@ -46,38 +48,38 @@ export default function Sidebar() {
                     return;
                 }
 
+                const chatID = findCurrentChatId();
+                if (!chatID) {
+                    return;
+                }
+
                 // background.js로 요청 위임
                 const response = await new Promise((resolve, reject) => {
                     chrome.runtime.sendMessage(
-                        { type: "FETCH_RECOMMENDED_PROMPTS", userID: currentUserID, chatID: findCurrentChatId() }, 
+                        { type: "FETCH_RECOMMENDED_PROMPTS", userID: currentUserID, chatID },
                         (res) => res && res.error ? reject(res.error) : resolve(res)
                     );
                 });
-                
-                // 데이터 매핑 (배열 여부 확인)
-                const data = Array.isArray(response) ? response : [];
-                const formattedData = data.map((item, index) => ({
+
+                // 응답이 { chatID: [...], global: [...] } 객체이거나 배열일 수 있음
+                let rawData = [];
+                if (Array.isArray(response)) {
+                    rawData = response;
+                } else if (response && typeof response === 'object') {
+                    const candidates = response[chatID] || response.global || [];
+                    rawData = Array.isArray(candidates) ? candidates : [];
+                }
+
+                const formattedData = rawData.map((item, index) => ({
                     title: item.title || item.subject || `추천 ${index + 1}`,
                     content: item.content || item.body || item.prompt || "",
-                    id: item.id || index
+                    id: item.id ?? `${Date.now()}-${index}`
                 }));
 
-                setRecommendedPrompts(formattedData);
+                // 기존 목록에 새 항목 추가 후 MAX_PROMPTS 초과분은 오래된 것부터 제거
+                setRecommendedPrompts(prev => [...prev, ...formattedData].slice(-MAX_PROMPTS));
             } catch (error) {
-                console.error('프롬프트 로딩 에러. 테스트 프롬프트 사용됨:', error);
-                
-                setRecommendedPrompts([
-                    { 
-                        title: 'T-분포 개괄', 
-                        content: 'T-분포의 정의와 주요 특징을 설명해줘.',
-                        id: 'def-1'
-                    },
-                    { 
-                        title: 'F-분포 개괄', 
-                        content: 'F-분포의 정의와 주요 두 개의 자유도 비교에 중점을 둬서 설명해줘.',
-                        id: 'def-2'
-                    },
-                ]);
+                console.error('프롬프트 로딩 에러:', error);
             }
         };
 
