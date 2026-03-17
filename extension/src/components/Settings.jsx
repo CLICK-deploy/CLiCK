@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 export default function Settings() {
     const [isOpen, setIsOpen] = useState(false);
     const [popupPos, setPopupPos] = useState({ top: 0, right: 0 });
+    const [dialog, setDialog] = useState(null); // 'confirm' | 'success' | null
     const popoverRef = useRef(null);
     const buttonRef = useRef(null);
 
@@ -83,13 +84,15 @@ export default function Settings() {
                             data-orientation="vertical" 
                             data-radix-collection-item
                             onClick={() => {
-                                chrome.runtime.sendMessage({ type: "LOGOUT" });
                                 setIsOpen(false);
+                                setDialog('confirm');
                             }}
                         >
                             <div className="flex items-center justify-center group-disabled:opacity-50 group-data-disabled:opacity-50 icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' aria-hidden="true" className="icon">
-                                    <use href="/cdn/assets/sprites-core-jxe2m7va.svg#427dd9" fill="currentColor"></use>
+                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                    <polyline points="16 17 21 12 16 7"/>
+                                    <line x1="21" y1="12" x2="9" y2="12"/>
                                 </svg>
                             </div>
                             로그아웃
@@ -107,8 +110,10 @@ export default function Settings() {
                             }}
                         >
                             <div className="flex items-center justify-center group-disabled:opacity-50 group-data-disabled:opacity-50 icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' aria-hidden="true" className="icon">
-                                    <use href="/cdn/assets/sprites-core-jxe2m7va.svg#427dd9" fill="currentColor"></use>
+                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                                    <polyline points="10 17 15 12 10 7"/>
+                                    <line x1="15" y1="12" x2="3" y2="12"/>
                                 </svg>
                             </div>
                             로그인
@@ -126,15 +131,84 @@ export default function Settings() {
                             }}
                         >
                             <div className="flex items-center justify-center group-disabled:opacity-50 group-data-disabled:opacity-50 icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' aria-hidden="true" className="icon">
-                                    <use href="/cdn/assets/sprites-core-jxe2m7va.svg#427dd9" fill="currentColor"></use>
+                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <line x1="19" y1="8" x2="19" y2="14"/>
+                                    <line x1="22" y1="11" x2="16" y2="11"/>
                                 </svg>
                             </div>
                             회원가입
                         </div>
+
+                        <div 
+                            role="menuitem" 
+                            tabIndex={0} 
+                            className="group __menu-item hoverable gap-1.5" 
+                            data-orientation="vertical" 
+                            data-radix-collection-item
+                            onClick={() => {
+                                chrome.runtime.sendMessage({ type: "OPEN_PAYMENT_PAGE" });
+                                setIsOpen(false);
+                            }}
+                        >
+                            <div className="flex items-center justify-center group-disabled:opacity-50 group-data-disabled:opacity-50 icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width='20' height='20' viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                            </div>
+                            플랜 업그레이드
+                        </div>
                     </div>
                 </div>
             )}
+        {/* 로그아웃 확인 팝업 */}
+        {dialog && (
+            <div style={{
+                position: 'fixed', inset: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                zIndex: 9999,
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+                <div style={{
+                    background: 'var(--main-surface-primary, #fff)',
+                    borderRadius: '12px',
+                    padding: '24px 28px',
+                    width: '260px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    color: 'var(--text-primary, #0d0d0d)',
+                    fontFamily: 'inherit',
+                    animation: 'clickSlideIn 0.2s ease-out'
+                }}>
+                    <style>{`@keyframes clickSlideIn { from { transform: translateY(-16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
+                    <p style={{ margin: '0 0 20px', fontSize: '14px', lineHeight: '1.5' }}>
+                        {dialog === 'confirm' ? '로그아웃 하시겠습니까?' : '로그아웃 되었습니다.'}
+                    </p>
+                    {dialog === 'confirm' ? (
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                            <button
+                                onClick={() => setDialog(null)}
+                                style={{ padding: '7px 18px', borderRadius: '6px', border: '1px solid rgba(0,0,0,0.12)', background: 'transparent', cursor: 'pointer', fontSize: '13px', color: 'inherit' }}
+                            >취소</button>
+                            <button
+                                onClick={async () => {
+                                    await chrome.runtime.sendMessage({ type: 'LOGOUT' });
+                                    setDialog('success');
+                                }}
+                                style={{ padding: '7px 18px', borderRadius: '6px', border: 'none', background: '#19c37d', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
+                            >로그아웃</button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setDialog(null)}
+                            style={{ padding: '7px 24px', borderRadius: '6px', border: 'none', background: '#19c37d', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
+                        >확인</button>
+                    )}
+                </div>
+            </div>
+        )}
         </div>
     );
 }

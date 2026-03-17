@@ -21,7 +21,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["login.html"],
+      "resources": ["html/login.html", "html/signin.html", "html/payment.html", "html/agree.html", "asset/js/login.js", "asset/js/signin.js", "asset/js/payment.js"],
       "matches": ["<all_urls>"]
     }
   ]

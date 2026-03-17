@@ -428,3 +428,139 @@
 
 ---
 
+## 4. 결제 API (토스페이먼츠 연동)
+
+CLiCK 확장 프로그램의 유료 플랜(Naive, Pro) 결제를 처리합니다. 토스페이먼츠 서버 결제 흐름을 따릅니다.
+
+### 결제 전체 흐름
+
+```
+[프론트] 결제 버튼 클릭
+    → TossPayments SDK requestPayment() 호출 (클라이언트 키, orderId, amount 포함)
+    → 토스페이먼츠 결제 페이지로 리다이렉트
+    → 사용자 결제 완료
+    → 토스페이먼츠가 GET /api/payment/success?paymentKey=...&orderId=...&amount=... 로 리다이렉트
+    → [백엔드] 토스페이먼츠 서버에 결제 최종 승인 요청
+    → [백엔드] DB에 사용자 플랜 업데이트
+    → [확장 background.js] 탭 URL 감지 → POST /api/payment/confirm 호출 → chrome.storage 플랜 저장
+```
+
+---
+
+### 4.1. 결제 승인 API
+
+토스페이먼츠로부터 받은 결제 정보를 최종 승인합니다.
+
+-   Endpoint: `/api/payment/confirm`
+-   HTTP Method: `POST`
+-   Description: 클라이언트(background.js)가 토스페이먼츠 리다이렉트 URL에서 추출한 `paymentKey`, `orderId`, `amount`를 전달하면, 백엔드가 토스페이먼츠 서버에 최종 승인을 요청하고 DB의 사용자 플랜을 업데이트합니다.
+
+#### 요청 (Input)
+
+-   Body:
+    ```json
+    {
+        "paymentKey": "string",
+        "orderId": "string",
+        "amount": "number",
+        "userID": "string"
+    }
+    ```
+-   상세:
+    -   `paymentKey`: 토스페이먼츠가 발급하는 결제 고유 키입니다.
+    -   `orderId`: 결제 요청 시 프론트에서 생성한 주문 ID입니다. 형식: `click-{userID}-{timestamp}-{random}`
+    -   `amount`: 결제 금액입니다. Naive: 1200, Pro: 9900 (원).
+    -   `userID`: 사용자 닉네임입니다.
+
+-   예시:
+    ```json
+    {
+        "paymentKey": "tviva20240904ENl49L53RKrVjVIBDnQ5a4bP",
+        "orderId": "click-홍길동-1741234567890-abc123",
+        "amount": 9900,
+        "userID": "홍길동"
+    }
+    ```
+
+#### 응답 (Output)
+
+-   성공 (200 OK):
+    ```json
+    {
+        "success": true,
+        "plan": "string",
+        "userID": "string"
+    }
+    ```
+-   상세:
+    -   `success`: 승인 성공 여부입니다.
+    -   `plan`: 적용된 플랜입니다. (`"naive"` | `"pro"`)
+    -   `userID`: 플랜이 적용된 사용자 ID입니다.
+
+-   예시:
+    ```json
+    {
+        "success": true,
+        "plan": "pro",
+        "userID": "홍길동"
+    }
+    ```
+
+-   실패 (400 Bad Request):
+    ```json
+    {
+        "success": false,
+        "error": "결제 금액 불일치"
+    }
+    ```
+-   실패 (500 Internal Server Error):
+    ```json
+    {
+        "success": false,
+        "error": "토스페이먼츠 승인 요청 실패"
+    }
+    ```
+-   상세:
+    -   토스페이먼츠 승인 API: `POST https://api.tosspayments.com/v1/payments/confirm`
+        -   Header: `Authorization: Basic {Base64(시크릿키:)}`
+        -   Body: `{ paymentKey, orderId, amount }`
+    -   승인 성공 후 DB에서 해당 `userID`의 플랜을 업데이트합니다.
+    -   amount 검증: DB에 저장된 orderId의 예상 금액과 요청된 amount가 일치해야 합니다.
+
+-   note:
+    -   시크릿 키는 서버 환경변수 `TOSS_SECRET_KEY`로 관리합니다.
+    -   클라이언트 키는 `TOSS_CLIENT_KEY`로 프론트에서 사용합니다 (테스트: `test_ck_...`, 운영: `live_ck_...`).
+
+---
+
+### 4.2. 결제 성공 리다이렉트 수신
+
+토스페이먼츠가 결제 완료 후 리다이렉트하는 엔드포인트입니다.
+
+-   Endpoint: `/api/payment/success`
+-   HTTP Method: `GET`
+-   Description: 토스페이먼츠가 결제 성공 후 이 URL로 리다이렉트합니다. 백엔드는 이 요청을 수신한 후 빈 200 응답 또는 간단한 HTML을 반환합니다. 실제 승인 처리는 background.js가 이 URL로의 탭 네비게이션을 감지하여 `/api/payment/confirm`을 호출하는 방식으로 이루어집니다.
+
+-   쿼리 파라미터 (토스페이먼츠가 자동 추가):
+    -   `paymentKey`: 결제 키
+    -   `orderId`: 주문 ID
+    -   `amount`: 결제 금액
+
+-   응답 (200 OK): 빈 HTML 또는 "결제가 처리 중입니다." 문구 반환 (탭은 background.js가 닫습니다)
+
+---
+
+### 4.3. 결제 실패 리다이렉트 수신
+
+-   Endpoint: `/api/payment/fail`
+-   HTTP Method: `GET`
+-   Description: 토스페이먼츠가 결제 실패/취소 후 이 URL로 리다이렉트합니다. background.js가 이 URL로의 탭 네비게이션을 감지하여 `pendingPayment`를 정리하고 탭을 닫습니다.
+
+-   쿼리 파라미터 (토스페이먼츠가 자동 추가):
+    -   `code`: 오류 코드
+    -   `message`: 오류 메시지
+    -   `orderId`: 주문 ID
+
+-   응답 (200 OK): 빈 HTML 또는 "결제가 취소되었습니다." 문구 반환
+
+---

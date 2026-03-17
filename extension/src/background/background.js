@@ -4,6 +4,65 @@ chrome.runtime.onInstalled.addListener(() => {
     console.log("CLICK extension installed.");
 });
 
+// 토스페이먼츠 결제 리다이렉트 감지 (success / fail)
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status !== "loading") return;
+    const url = tab.url || changeInfo.url;
+    if (!url) return;
+
+    const SUCCESS_URL = `${API_BASE_URL}/api/payment/success`;
+    const FAIL_URL    = `${API_BASE_URL}/api/payment/fail`;
+
+    if (url.startsWith(SUCCESS_URL)) {
+        const params = new URL(url).searchParams;
+        const paymentKey = params.get("paymentKey");
+        const orderId    = params.get("orderId");
+        const amount     = parseInt(params.get("amount"), 10);
+
+        try {
+            const data = await chrome.storage.local.get(["pendingPayment"]);
+            const pending = data.pendingPayment;
+
+            if (!pending || pending.orderId !== orderId) {
+                console.error("[Payment] pendingPayment 불일치:", orderId);
+                return;
+            }
+
+            // 백엔드에 결제 확인 요청
+            const res = await fetch(`${API_BASE_URL}/api/payment/confirm`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    paymentKey,
+                    orderId,
+                    amount,
+                    userID: pending.userID,
+                }),
+            });
+
+            const result = await res.json();
+
+            if (res.ok && result.success) {
+                await chrome.storage.local.set({ plan: pending.plan });
+                console.log(`[Payment] 결제 성공: ${pending.plan} 플랜 적용`);
+            } else {
+                console.error("[Payment] 결제 확인 실패:", result.error);
+            }
+        } catch (err) {
+            console.error("[Payment] 결제 확인 중 오류:", err);
+        } finally {
+            await chrome.storage.local.remove(["pendingPayment"]);
+            chrome.tabs.remove(tabId);
+        }
+    }
+
+    if (url.startsWith(FAIL_URL)) {
+        console.warn("[Payment] 결제 실패 또는 취소");
+        await chrome.storage.local.remove(["pendingPayment"]);
+        chrome.tabs.remove(tabId);
+    }
+});
+
 // 콘텐츠 스크립트로부터 메시지를 받기 위한 리스너 추가
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 프롬프트 분석 요청
@@ -266,7 +325,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 로그인 페이지 열기 요청
     if (message.type === "OPEN_LOGIN_PAGE") {
         chrome.tabs.create({
-            url: chrome.runtime.getURL('login.html')
+            url: chrome.runtime.getURL('html/login.html')
         });
         sendResponse({ success: true });
         return true;
@@ -275,7 +334,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 회원가입 페이지 열기 요청
     if (message.type === "OPEN_SIGNUP_PAGE") {
         chrome.tabs.create({
-            url: chrome.runtime.getURL('signin.html')
+            url: chrome.runtime.getURL('html/signin.html')
         });
         sendResponse({ success: true });
         return true;
@@ -284,7 +343,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 결제 페이지 열기 요청
     if (message.type === "OPEN_PAYMENT_PAGE") {
         chrome.tabs.create({
-            url: chrome.runtime.getURL('payment.html')
+            url: chrome.runtime.getURL('html/payment.html')
         });
         sendResponse({ success: true });
         return true;

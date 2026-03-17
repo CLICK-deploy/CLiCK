@@ -232,6 +232,32 @@
       opacity: 1;
     }
 
+    /* 현재 플랜 - 선택 불가 */
+    .plan-card.current-plan {
+      cursor: default;
+      opacity: 0.55;
+      border-color: var(--border-color) !important;
+      box-shadow: none !important;
+    }
+
+    .plan-card.current-plan:hover {
+      border-color: var(--border-color) !important;
+      box-shadow: none !important;
+    }
+
+    .current-plan-badge {
+      position: absolute;
+      top: -1px;
+      left: 16px;
+      background-color: var(--subtext-color);
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 0 0 8px 8px;
+      letter-spacing: 0.03em;
+    }
+
     /* 결제 버튼 */
     .pay-button {
       width: 60%;
@@ -339,8 +365,8 @@
 
     <div class="container">
       <div class="logo-area">
-        <img src="icon.png" alt="CLiCK 아이콘" class="logo-icon" />
-        <img src="logo.png" alt="CLiCK 로고 텍스트" class="logo-text" />
+        <img src="../images/icon.png" alt="CLiCK 아이콘" class="logo-icon" />
+        <img src="../images/logo.png" alt="CLiCK 로고 텍스트" class="logo-text" />
       </div>
 
       <p class="page-title">요금제 선택</p>
@@ -358,6 +384,21 @@
           </div>
           <ul class="plan-features">
             <li>프롬프트 분석 하루 5회</li>
+            <li>추천 프롬프트 기본 제공</li>
+          </ul>
+        </div>
+
+        <!-- Naive 플랜 -->
+        <div class="plan-card" id="plan-naive" data-plan="naive">
+          <div class="plan-header">
+            <div class="plan-radio">
+              <div class="radio-dot"></div>
+              <span class="plan-name">Naive</span>
+            </div>
+            <span class="plan-price">₩1,200 <span class="price-unit">/ 월</span></span>
+          </div>
+          <ul class="plan-features">
+            <li>프롬프트 분석 하루 20회</li>
             <li>추천 프롬프트 기본 제공</li>
           </ul>
         </div>
@@ -384,6 +425,7 @@
       <p class="footer-note">언제든지 플랜을 변경하거나 취소할 수 있습니다.</p>
     </div>
 
-    <script src="payment.js"></script>
+    <script src="https://js.tosspayments.com/v1/payment"></script>
+    <script src="../asset/js/payment.js"></script>
   </body>
 </html>
