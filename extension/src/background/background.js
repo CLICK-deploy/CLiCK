@@ -281,6 +281,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
+    // 결제 페이지 열기 요청
+    if (message.type === "OPEN_PAYMENT_PAGE") {
+        chrome.tabs.create({
+            url: chrome.runtime.getURL('payment.html')
+        });
+        sendResponse({ success: true });
+        return true;
+    }
+
+    // 플랜 선택 요청
+    if (message.type === "SELECT_PLAN") {
+        (async () => {
+            try {
+                await chrome.storage.local.set({ plan: message.plan });
+                sendResponse({ success: true });
+            } catch (error) {
+                console.error("플랜 저장 실패:", error);
+                sendResponse({ success: false, error: error.message });
+            }
+        })();
+        return true;
+    }
+
     // 닉네임 중복 확인 요청
     if (message.type === "CHECK_DUPLICATE") {
     (async () => {
