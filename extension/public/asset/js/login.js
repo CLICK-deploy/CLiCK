@@ -1,4 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const goSignupLink = document.getElementById("go-signup");
+  if (goSignupLink) {
+    goSignupLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      chrome.runtime.sendMessage({ type: "OPEN_SIGNUP_PAGE" });
+    });
+  }
+
   const form = document.querySelector(".user-data-form");
   const customAlert = document.getElementById("custom-alert");
   const alertMessage = document.getElementById("alert-message");
