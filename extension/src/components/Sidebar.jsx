@@ -20,7 +20,6 @@ export default function Sidebar() {
             if (response.isLoggedIn && response.userID) {
                 return response.userID;
             } else {
-                console.warn('로그인되지 않음');
                 return null;
             }
         } catch (error) {
@@ -42,7 +41,7 @@ export default function Sidebar() {
                 const currentUserID = await getUserID();
                 console.log('[Sidebar] userID:', currentUserID);
                 if (!currentUserID) {
-                    console.warn('[Sidebar] 로그인되지 않아 추천 프롬프트 요청 생략');
+                    console.log('[Sidebar] 로그인되지 않아 추천 프롬프트 요청 생략');
                     return;
                 }
 

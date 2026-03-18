@@ -22,32 +22,6 @@ function isExtensionContextValid() {
     }
 }
 
-// 로그인 상태 확인 및 필요 시 로그인 페이지 열기
-async function checkLoginAndRedirect() {
-    if (!isExtensionContextValid()) return false;
-    return new Promise((resolve) => {
-        try {
-            chrome.runtime.sendMessage(
-                { type: "CHECK_LOGIN" },
-                (response) => {
-                    if (!response || !response.isLoggedIn) {
-                        if (!loginPageOpened) {
-                            // 로그인 페이지 열기
-                            chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
-                            loginPageOpened = true;
-                        }
-                        resolve(false);  
-                    } else {
-                        resolve(true); 
-                    }
-                }
-            );
-        } catch {
-            resolve(false);
-        }
-    });
-}
-
 function injectSidebar() {
     const targetNav = document.querySelector('[class="group/sidebar-expando-section mb-[var(--sidebar-collapsed-section-margin-bottom)]"]');
     if (targetNav && !document.querySelector('#click-sidebar-root')) {
@@ -127,24 +101,17 @@ function injectAnalysisContainer() {
 
 // 폼/버튼이 사라졌을 때 자동 복구를 위한 폴백 인터벌
 let clickUiInterval = null;
-async function ensureUiInjected() {
-    const isLoggedIn = await checkLoginAndRedirect();
-
-    // 로그인되어 있을 때만 UI 주입
-    if (isLoggedIn) {
-        injectSidebar();
-        injectPromptTools();
-        injectSettings();
-    }
+function ensureUiInjected() {
+    injectSidebar();
+    injectPromptTools();
+    injectSettings();
 }
 
-// 초기 실행 - 로그인 확인 및 UI 주입
-(async () => {
-    await ensureUiInjected();
-})();
+// 초기 실행 - UI 주입
+ensureUiInjected();
 
 // MutationObserver를 사용하여 ChatGPT의 동적 UI 로딩에 대응
-const observer = new MutationObserver(async () => {
+const observer = new MutationObserver(() => {
     // Extension context가 무효화됐으면 즉시 정리
     if (!isExtensionContextValid()) {
         observer.disconnect();
@@ -155,35 +122,21 @@ const observer = new MutationObserver(async () => {
         return;
     }
 
-    // 로그인 상태 확인
-    const isLoggedIn = await new Promise((resolve) => {
-        try {
-            chrome.runtime.sendMessage(
-                { type: "CHECK_LOGIN" },
-                (response) => resolve(response && response.isLoggedIn)
-            );
-        } catch {
-            resolve(false);
-        }
-    });
+    injectSidebar();
+    injectPromptTools();
+    injectSettings();
 
-    // 로그인되어 있을 때만 UI 주입
-    if (isLoggedIn) {
-        injectSidebar();
-        injectPromptTools();
-        injectSettings();
-        // 폴백 인터벌 시작(계속 감시)
-        if (!clickUiInterval) {
-            clickUiInterval = setInterval(() => {
-                if (!isExtensionContextValid()) {
-                    clearInterval(clickUiInterval);
-                    clickUiInterval = null;
-                    observer.disconnect();
-                    return;
-                }
-                ensureUiInjected();
-            }, 300);
-        }
+    // 폴백 인터벌 시작(계속 감시)
+    if (!clickUiInterval) {
+        clickUiInterval = setInterval(() => {
+            if (!isExtensionContextValid()) {
+                clearInterval(clickUiInterval);
+                clickUiInterval = null;
+                observer.disconnect();
+                return;
+            }
+            ensureUiInjected();
+        }, 300);
     }
 });
 
@@ -192,11 +145,11 @@ observer.observe(document.body, {
     subtree: true
 });
 
-// 로그인 성공 메시지를 받으면 UI 주입 시작
+// 로그인 성공 메시지를 받으면 UI 재주입 (혹시 누락된 컴포넌트 보완)
 try {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.type === "LOGIN_SUCCESS") {
-            loginPageOpened = false; // 리셋
+            loginPageOpened = false;
             ensureUiInjected();
             sendResponse({ success: true });
         }

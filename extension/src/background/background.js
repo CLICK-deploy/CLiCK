@@ -45,6 +45,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             if (res.ok && result.success) {
                 await chrome.storage.local.set({ plan: pending.plan });
                 console.log(`[Payment] 결제 성공: ${pending.plan} 플랜 적용`);
+                // payment.html 탭에 성공 알림 전송
+                if (clickAppTabId !== null) {
+                    chrome.tabs.sendMessage(clickAppTabId, { type: "PAYMENT_SUCCESS", plan: pending.plan });
+                }
             } else {
                 console.error("[Payment] 결제 확인 실패:", result.error);
             }
@@ -60,6 +64,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         console.warn("[Payment] 결제 실패 또는 취소");
         await chrome.storage.local.remove(["pendingPayment"]);
         chrome.tabs.remove(tabId);
+        // payment.html 탭에 취소 알림 전송 → UI 복구
+        if (clickAppTabId !== null) {
+            chrome.tabs.sendMessage(clickAppTabId, { type: "PAYMENT_CANCELLED" });
+        }
     }
 });
 

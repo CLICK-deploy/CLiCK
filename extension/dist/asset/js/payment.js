@@ -12,9 +12,35 @@ function generateOrderId(userID) {
   return `click-${userID}-${Date.now()}-${rand}`.slice(0, 64);
 }
 
+// DOM 요소 전역 참조 (메시지 리스너에서 접근하기 위해)
+let payButton = null;
+function showAlert(message) {
+  const alertMessage = document.getElementById("alert-message");
+  const customAlert = document.getElementById("custom-alert");
+  if (alertMessage && customAlert) {
+    alertMessage.textContent = message;
+    customAlert.style.display = "flex";
+  }
+}
+
+// 결제 취소/실패 시 background.js로부터 UI 복구 메시지 수신
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "PAYMENT_CANCELLED") {
+    if (payButton) {
+      payButton.disabled = false;
+      payButton.textContent = "선택 완료";
+    }
+    showAlert("결제가 취소되었습니다. 플랜을 다시 선택해주세요.");
+  }
+  if (message.type === "PAYMENT_SUCCESS") {
+    showAlert(`결제가 완료되었습니다! ${message.plan} 플랜이 적용되었습니다.`);
+    setTimeout(() => chrome.tabs.getCurrent((tab) => chrome.tabs.remove(tab.id)), 2500);
+  }
+});
+
 document.addEventListener("DOMContentLoaded", async function () {
   const planCards = document.querySelectorAll(".plan-card");
-  const payButton = document.getElementById("pay-button");
+  payButton = document.getElementById("pay-button");
   const customAlert = document.getElementById("custom-alert");
   const alertMessage = document.getElementById("alert-message");
   const alertClose = document.getElementById("alert-close");
@@ -58,11 +84,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   alertClose.addEventListener("click", function () {
     customAlert.style.display = "none";
   });
-
-  function showAlert(message) {
-    alertMessage.textContent = message;
-    customAlert.style.display = "flex";
-  }
 
   // 카드 선택 토글 (현재 플랜은 선택 불가)
   planCards.forEach((card) => {
