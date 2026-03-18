@@ -64,6 +64,39 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 // 콘텐츠 스크립트로부터 메시지를 받기 위한 리스너 추가
+
+// 로그인/회원가입/결제 페이지 공용 탭 ID (메모리 유지)
+let clickAppTabId = null;
+
+// CLiCK 전용 탭 하나만 사용 — 이미 열려 있으면 URL만 전환, 없으면 새 탭 생성
+function openClickAppTab(url, senderTabIndex) {
+    const open = () => chrome.tabs.create({ url, index: senderTabIndex + 1 }, (tab) => {
+        clickAppTabId = tab.id;
+    });
+
+    if (clickAppTabId === null) {
+        open();
+        return;
+    }
+
+    chrome.tabs.get(clickAppTabId, (tab) => {
+        if (chrome.runtime.lastError || !tab) {
+            // 탭이 이미 닫혀 있으면 새로 생성
+            clickAppTabId = null;
+            open();
+        } else {
+            // 탭이 살아 있으면 URL만 바꾸고 포커스
+            chrome.tabs.update(clickAppTabId, { url, active: true });
+            chrome.windows.update(tab.windowId, { focused: true });
+        }
+    });
+}
+
+// CLiCK 앱 탭이 닫히면 ID 초기화
+chrome.tabs.onRemoved.addListener((tabId) => {
+    if (tabId === clickAppTabId) clickAppTabId = null;
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 프롬프트 분석 요청
     if (message.type === "ANALYZE_PROMPT") {
@@ -324,27 +357,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 로그인 페이지 열기 요청
     if (message.type === "OPEN_LOGIN_PAGE") {
-        chrome.tabs.create({
-            url: chrome.runtime.getURL('html/login.html')
-        });
+        openClickAppTab(chrome.runtime.getURL('html/login.html'), sender.tab?.index ?? 0);
         sendResponse({ success: true });
         return true;
     }
 
     // 회원가입 페이지 열기 요청
     if (message.type === "OPEN_SIGNUP_PAGE") {
-        chrome.tabs.create({
-            url: chrome.runtime.getURL('html/signin.html')
-        });
+        openClickAppTab(chrome.runtime.getURL('html/signin.html'), sender.tab?.index ?? 0);
         sendResponse({ success: true });
         return true;
     }
 
     // 결제 페이지 열기 요청
     if (message.type === "OPEN_PAYMENT_PAGE") {
-        chrome.tabs.create({
-            url: chrome.runtime.getURL('html/payment.html')
-        });
+        openClickAppTab(chrome.runtime.getURL('html/payment.html'), sender.tab?.index ?? 0);
         sendResponse({ success: true });
         return true;
     }
@@ -382,7 +409,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     amount: String(message.amount),
                     clientKey: TOSS_CLIENT_KEY,
                 });
-                chrome.tabs.create({ url: `${API_BASE_URL}/payment?${params}` });
+                const paymentUrl = `${API_BASE_URL}/payment?${params}`;
+                // 이미 열린 결제 탭이 있으면 URL 업데이트, 없으면 새 탭
+                chrome.tabs.query({ url: `${API_BASE_URL}/payment*` }, (tabs) => {
+                    if (tabs.length > 0) {
+                        chrome.tabs.update(tabs[0].id, { url: paymentUrl, active: true });
+                        chrome.windows.update(tabs[0].windowId, { focused: true });
+                    } else {
+                        chrome.tabs.create({
+                            url: paymentUrl,
+                            index: (sender.tab?.index ?? 0) + 1,
+                        });
+                    }
+                });
                 sendResponse({ success: true });
             } catch (error) {
                 console.error("[Payment] 결제 페이지 열기 실패:", error);
