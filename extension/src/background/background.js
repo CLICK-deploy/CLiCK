@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL, TOSS_CLIENT_KEY } from "../config";
 
 chrome.runtime.onInstalled.addListener(() => {
     console.log("CLICK extension installed.");
@@ -357,6 +357,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ success: true });
             } catch (error) {
                 console.error("플랜 저장 실패:", error);
+                sendResponse({ success: false, error: error.message });
+            }
+        })();
+        return true;
+    }
+
+    // 유료 플랜 결제 시작 요청 — 서버의 결제 웹페이지를 새 탭으로 열어 TossPayments 처리
+    if (message.type === "OPEN_TOSS_PAYMENT") {
+        (async () => {
+            try {
+                await chrome.storage.local.set({
+                    pendingPayment: {
+                        orderId: message.orderId,
+                        plan: message.plan,
+                        amount: message.amount,
+                        userID: message.userID,
+                    },
+                });
+                const params = new URLSearchParams({
+                    userID: message.userID,
+                    plan: message.plan,
+                    orderId: message.orderId,
+                    amount: String(message.amount),
+                    clientKey: TOSS_CLIENT_KEY,
+                });
+                chrome.tabs.create({ url: `${API_BASE_URL}/payment?${params}` });
+                sendResponse({ success: true });
+            } catch (error) {
+                console.error("[Payment] 결제 페이지 열기 실패:", error);
                 sendResponse({ success: false, error: error.message });
             }
         })();

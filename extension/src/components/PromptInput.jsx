@@ -86,7 +86,7 @@ export default function PromptInput() {
                 // TODO: css style 분리
                 <div style={{ position: 'relative', zIndex: 100, width: '100%' }}>
                     <PromptAnalysis
-                        source={liveText}
+                        source={analysis?.source || liveText}
                         result={analysis ? analysis.result : { tags: [], patches: {}, full_suggestion: liveText }}
                         /* X 버튼 누르면 분석 결과 지우기 */
                         onClose={() => {

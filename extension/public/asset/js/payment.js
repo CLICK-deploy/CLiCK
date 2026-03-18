@@ -1,5 +1,6 @@
-// 토스페이먼츠 클라이언트 키 (테스트: test_ck_..., 운영: live_ck_...)
-const TOSS_CLIENT_KEY = "YOUR_TOSS_CLIENT_KEY";
+// API_BASE_URL, TOSS_CLIENT_KEY 는 config.js 에서 전역으로 제공됩니다.
+
+const PLAN_ORDER = ['free', 'naive', 'pro'];
 
 const PLAN_INFO = {
   naive: { amount: 1200, orderName: "CLiCK Naive 플랜" },
@@ -30,11 +31,25 @@ document.addEventListener("DOMContentLoaded", async function () {
   } catch (e) {}
 
   planCards.forEach((card) => {
-    if (card.dataset.plan === currentPlan) {
+    const cardPlan = card.dataset.plan;
+    const cardRank = PLAN_ORDER.indexOf(cardPlan);
+    const currentRank = PLAN_ORDER.indexOf(currentPlan);
+
+    if (cardPlan === currentPlan) {
+      // 현재 플랜 표시
       card.classList.add("current-plan");
       const badge = document.createElement("div");
       badge.className = "current-plan-badge";
       badge.textContent = "현재 플랜";
+      card.prepend(badge);
+    } else if (cardRank < currentRank) {
+      // 현재보다 낮은 플랜 비활성화
+      card.classList.add("lower-plan");
+    } else if (cardRank === currentRank + 1) {
+      // 현재 플랜 바로 다음 단계에 추천 배지
+      const badge = document.createElement("div");
+      badge.className = "plan-badge";
+      badge.textContent = "추천";
       card.prepend(badge);
     }
   });
@@ -53,6 +68,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   planCards.forEach((card) => {
     card.addEventListener("click", function () {
       if (card.classList.contains("current-plan")) return;
+      if (card.classList.contains("lower-plan")) return;
       planCards.forEach((c) => c.classList.remove("selected"));
       card.classList.add("selected");
       selectedPlan = card.dataset.plan;
@@ -99,28 +115,30 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     const orderId = generateOrderId(userID);
 
+    payButton.disabled = true;
+    payButton.textContent = "결제 페이지 이동 중...";
+
     try {
-      // pendingPayment를 storage에 저장 (background.js가 리다이렉트 감지 후 읽음)
-      await chrome.storage.local.set({
-        pendingPayment: { orderId, plan: selectedPlan, amount: plan.amount, userID },
+      // background.js가 pendingPayment 저장 + 서버 결제 페이지(일반 웹) 새 탭으로 열기
+      // 서버 페이지에서 js.tosspayments.com SDK를 자유롭게 사용
+      const response = await chrome.runtime.sendMessage({
+        type: "OPEN_TOSS_PAYMENT",
+        orderId,
+        plan: selectedPlan,
+        amount: plan.amount,
+        userID,
       });
 
-      const tossPayments = TossPayments(TOSS_CLIENT_KEY);
-      await tossPayments.requestPayment("카드", {
-        amount: plan.amount,
-        orderId,
-        orderName: plan.orderName,
-        customerName: userID,
-        successUrl: "http://54.253.211.53:8000/api/payment/success",
-        failUrl:    "http://54.253.211.53:8000/api/payment/fail",
-      });
-      // requestPayment는 현재 탭을 Toss 결제 페이지로 리다이렉트하므로
-      // 이 아래 코드는 결제 취소 시에만 실행됨
-    } catch (error) {
-      await chrome.storage.local.remove(["pendingPayment"]);
-      if (error.code !== "USER_CANCEL") {
-        showAlert("결제 중 오류가 발생했습니다: " + error.message);
+      if (!response?.success) {
+        showAlert(response?.error || "결제 페이지를 열지 못했습니다.");
+        payButton.disabled = false;
+        payButton.textContent = "선택 완료";
       }
+      // 성공 시 새 탭이 열리며 현재 payment.html은 그대로 유지
+    } catch (error) {
+      showAlert("오류가 발생했습니다: " + error.message);
+      payButton.disabled = false;
+      payButton.textContent = "선택 완료";
     }
   });
 });
