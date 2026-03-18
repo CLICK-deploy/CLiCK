@@ -564,3 +564,90 @@ CLiCK 확장 프로그램의 유료 플랜(Naive, Pro) 결제를 처리합니다
 -   응답 (200 OK): 빈 HTML 또는 "결제가 취소되었습니다." 문구 반환
 
 ---
+
+### 4.4. 결제 웹 페이지 (토스페이먼츠 SDK 실행)
+
+Chrome 익스텐션은 MV3 정책상 외부 스크립트(`js.tosspayments.com`)를 익스텐션 페이지에서 직접 로드할 수 없습니다. 따라서 **서버가 일반 웹 페이지를 제공**하고, 익스텐션(background.js)이 해당 페이지를 새 탭으로 열어 결제를 진행합니다.
+
+-   Endpoint: `/payment`
+-   HTTP Method: `GET`
+-   Description: 쿼리 파라미터로 전달된 결제 정보를 HTML 페이지에 삽입하여 반환합니다. 페이지가 로드되면 즉시 `TossPayments(clientKey).requestPayment()`를 호출해 토스페이먼츠 결제 화면으로 리다이렉트합니다.
+
+#### 요청 (Input)
+
+-   쿼리 파라미터:
+
+    | 파라미터    | 타입     | 설명                                  |
+    |-------------|----------|---------------------------------------|
+    | `userID`    | string   | 사용자 닉네임                         |
+    | `plan`      | string   | 선택한 플랜 (`"naive"` \| `"pro"`)    |
+    | `orderId`   | string   | 익스텐션에서 생성한 주문 ID           |
+    | `amount`    | number   | 결제 금액 (Naive: 1200, Pro: 9900)    |
+    | `clientKey` | string   | 토스페이먼츠 클라이언트 키            |
+
+-   예시:
+    ```
+    GET /payment?userID=홍길동&plan=pro&orderId=click-홍길동-1741234567890-abc123&amount=9900&clientKey=test_ck_...
+    ```
+
+#### 응답 (Output)
+
+-   성공 (200 OK): 아래 구조의 HTML 페이지 반환
+
+    ```html
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>CLiCK 결제</title></head>
+    <body>
+      <script src="https://js.tosspayments.com/v1/payment"></script>
+      <script>
+        const tossPayments = TossPayments("{{clientKey}}");
+        tossPayments.requestPayment("카드", {
+          amount: {{amount}},
+          orderId: "{{orderId}}",
+          orderName: "CLiCK {{plan}} 플랜",
+          customerName: "{{userID}}",
+          successUrl: "{{API_BASE_URL}}/api/payment/success",
+          failUrl: "{{API_BASE_URL}}/api/payment/fail",
+        });
+      </script>
+    </body>
+    </html>
+    ```
+
+    -   `{{...}}` 는 서버가 쿼리 파라미터 값으로 치환합니다.
+    -   `orderName` 은 `plan` 값에 따라 `"CLiCK Naive 플랜"` 또는 `"CLiCK Pro 플랜"` 으로 설정합니다.
+    -   페이지 로드 즉시 `requestPayment()`가 실행되어 토스페이먼츠 결제 화면으로 이동하므로, 별도의 UI 없이 빈 페이지로 구성해도 무방합니다.
+
+-   실패 (400 Bad Request): 필수 파라미터 누락 시 에러 페이지 또는 JSON 반환
+    ```json
+    { "error": "필수 파라미터가 누락되었습니다." }
+    ```
+
+#### 보안 주의사항
+
+-   `clientKey`는 토스페이먼츠 **클라이언트 키**로, 공개되어도 무방합니다 (결제 요청만 가능, 승인 불가).
+-   **시크릿 키**는 절대 이 페이지에 포함하지 않습니다. 시크릿 키는 `/api/payment/confirm` 서버 처리에서만 사용합니다.
+-   `amount`는 서버에서 플랜별 고정 금액(`naive: 1200`, `pro: 9900`)과 대조 검증하는 것을 권장합니다.
+
+#### 전체 결제 흐름 (업데이트)
+
+```
+[익스텐션 payment.html에서 결제 버튼 클릭]
+    ↓
+background.js → pendingPayment 저장 + GET /payment?... 새 탭 오픈
+    ↓
+서버가 HTML 반환 → 브라우저에서 TossPayments SDK 로드 → requestPayment() 자동 실행
+    ↓
+토스페이먼츠 결제 화면으로 리다이렉트 → 사용자 결제 완료
+    ↓
+토스페이먼츠 → GET /api/payment/success?paymentKey=...&orderId=...&amount=...
+    ↓
+background.js가 탭 URL 감지 → POST /api/payment/confirm 호출
+    ↓
+서버 → 토스페이먼츠 최종 승인 → DB 플랜 업데이트 → { success: true, plan: "pro" }
+    ↓
+background.js → chrome.storage에 플랜 저장 → 탭 닫기
+```
+
+---
