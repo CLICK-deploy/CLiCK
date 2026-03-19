@@ -7,7 +7,12 @@
 ## 2. 공통 사항
 
 -   Content-Type: 모든 `POST` 요청의 Body는 `application/json` 형식을 사용
--   인증: 현재 별도의 인증 절차는 없으나, 향후 API Key 기반 인증이 추가될 수 있음
+-   인증: 로그인/회원가입 API를 제외한 모든 API는 `Authorization` 헤더에 Bearer 토큰을 포함해야 합니다.
+    ```
+    Authorization: Bearer <access_token>
+    ```
+    -   `access_token`은 로그인 또는 회원가입 성공 시 발급되며, Chrome Storage에 저장됩니다.
+    -   토큰이 없거나 유효하지 않으면 `401 Unauthorized`를 반환합니다.
 
 ---
 
@@ -19,21 +24,24 @@
 
 -   Endpoint: `/api/analyze-prompt`
 -   HTTP Method: `POST`
--   Description\*\*: 전달받은 프롬프트 텍스트를 백엔드의 LLM(OpenAI)을 통해 분석하고, 발견된 문제점(태그), 부분 수정안(패치), 그리고 전체 수정 제안을 포함하는 JSON 객체를 반환합니다.
+-   Description: 전달받은 프롬프트 텍스트를 백엔드의 LLM을 통해 분석하고, 발견된 문제점(태그), 부분 수정안(패치), 그리고 전체 수정 제안을 포함하는 JSON 객체를 반환합니다.
+-   인증: `Authorization: Bearer <access_token>` 헤더 필요 (공통 사항 참조)
 
 #### 요청 (Input)
 
+-   Header:
+    ```
+    Authorization: Bearer <access_token>
+    ```
 -   Body:
     ```json
     {
-        "userID": "string",
         "chatID": "string",
         "prompt": "string"
     }
     ```
 -   상세:
 
-    -   `userID`: 사용자가 설정한 사용자의 닉네임입니다.
     -   `chatID`: 사용자의 현재 채팅이 어디인지 보여주는 string입니다. href에 있는 정보로 식별합니다.
     -   `prompt`: 사용자가 ChatGPT 입력창에 작성한 후, 분석하기 버튼을 눌렀을 때 입력창에 있는 string입니다.
 
@@ -41,7 +49,6 @@
 
     ```json
     {
-        "userID": "복지관빨대도둑",
         "chatID": "/c/68e396fc-2590-8324-9f0c-4388bf926421",
         "prompt": "GPT에게 창의적으로 모든 연령대가 이해할 수 있는 이야기를 요약해 줘"
     }
@@ -105,27 +112,29 @@
 
 -   Endpoint: `/api/recommended-prompts`
 -   HTTP Method: `POST`
--   Description: 사용자 식별자와 현재 채팅 ID를 전달받습니다. 특정 채팅 ID가 제공되면 해당 채팅의 대화 내용을 기반으로, 채팅 ID가 `null`이면 사용자의 전체 대화 기록을 기반으로 맞춤형 추천 프롬프트를 생성하여 반환합니다.
+-   Description: 현재 채팅 ID를 전달받습니다. 특정 채팅 ID가 제공되면 해당 채팅의 대화 내용을 기반으로, 채팅 ID가 `null`이면 사용자의 전체 대화 기록을 기반으로 맞춤형 추천 프롬프트를 생성하여 반환합니다.
+-   인증: `Authorization: Bearer <access_token>` 헤더 필요 (공통 사항 참조)
 
 #### 요청 (Input)
 
+-   Header:
+    ```
+    Authorization: Bearer <access_token>
+    ```
 -   Body:
     ```json
     {
-        "userID": "string",
         "chatID": "string | null"
     }
     ```
 -   상세:
 
-    -   `userID`: 사용자를 식별하기 위한 고유 값입니다. (예: ChatGPT 유저 닉네임)
     -   `chatID`: 현재 채팅방의 고유 ID입니다. '새 채팅' 화면일 경우 이 값을 `null`로 전송하여, 사용자의 전체 대화 기반 추천을 요청합니다.
 
 -   예시 (특정 채팅):
 
     ```json
     {
-        "userID": "복지관빨대도둑",
         "chatID": "/c/68e396fc-2590-8324-9f0c-4388bf926421"
     }
     ```
@@ -133,7 +142,6 @@
 -   예시 (새 채팅):
     ```json
     {
-        "userID": "복지관빨대도둑",
         "chatID": null
     }
     ```
@@ -182,11 +190,11 @@
 
 ### 3.3. 회원가입 API
 
-사용자 인증을 처리하고, 인증 성공 시 사용자 ID를 반환합니다.
+신규 사용자를 등록하고 JWT 토큰을 발급합니다.
 
--   Endpoint: `/api/login`
+-   Endpoint: `/api/signup`
 -   HTTP Method: `POST`
--   Description: 사용자의 닉네임과 패스워드를 받아 인증을 수행합니다. 인증 성공 시 userID를 반환하며, 클라이언트는 이를 Chrome Storage에 저장하여 이후 모든 API 요청에 사용합니다.
+-   Description: 사용자의 닉네임과 패스워드를 받아 계정을 생성합니다. 성공 시 `access_token`과 `refresh_token`을 반환하며, 클라이언트는 이를 Chrome Storage에 저장하여 이후 모든 인증 API 요청에 사용합니다.
 
 #### 요청 (Input)
 
@@ -222,28 +230,23 @@
 -   성공 (200 OK):
     ```json
     {
+        "access_token": "string",
+        "refresh_token": "string",
+        "token_type": "Bearer",
         "userID": "string",
-        "message": "Login successful"
+        "message": "Signup successful"
     }
     ```
 -   상세:
 
-    -   `userID`: 인증된 사용자의 고유 식별자입니다. (예: username 또는 별도 생성된 ID)
-    -   `message`: 로그인 성공 메시지입니다. (선택사항)
+    -   `access_token`: 인증 API 요청 시 `Authorization` 헤더에 사용하는 JWT 토큰입니다.
+    -   `refresh_token`: 토큰 갱신에 사용하는 JWT 토큰입니다.
+    -   `userID`: 생성된 사용자의 닉네임입니다.
 
--   예시:
-
+-   실패 (409 Conflict):
     ```json
     {
-        "userID": "복지관빨대도둑",
-        "message": "Login successful"
-    }
-    ```
-
--   실패 (401 Unauthorized):
-    ```json
-    {
-        "error": "Invalid credentials"
+        "detail": "이미 사용 중인 닉네임입니다."
     }
     ```
 -   실패 (500 Internal Server Error):
@@ -252,23 +255,19 @@
         "error": "Internal server error"
     }
     ```
--   상세:
-    -   `error`: 로그인 실패 원인을 설명하는 메시지입니다.
-        -   `"Invalid credentials"`: 잘못된 사용자명 또는 패스워드
-        -   `"Internal server error"`: 서버 내부 오류
 
 -   note: 
-    -   클라이언트는 성공 시 `userID`를 Chrome Storage에 저장합니다.
-    -   이후 모든 API 요청(`ANALYZE_PROMPT`, `FETCH_RECOMMENDED_PROMPTS`)에서 이 `userID`를 사용합니다.
-    -   로그아웃 시 클라이언트는 Chrome Storage에서 `userID`와 로그인 상태를 삭제합니다.
+    -   클라이언트는 성공 시 `access_token`과 `userID`를 Chrome Storage에 저장합니다.
+    -   이후 모든 인증 API 요청(`ANALYZE_PROMPT`, `FETCH_RECOMMENDED_PROMPTS`, `TRACE_INPUT`)에서 `Authorization: Bearer <access_token>` 헤더를 사용합니다.
+    -   `userID`(닉네임)는 UI 표시용으로만 사용되며, API 인증은 토큰으로만 처리합니다.
 
 ### 3.4. 로그인 API
 
-사용자 인증을 처리하고, 인증 성공 시 사용자 ID를 반환합니다.
+기존 사용자를 인증하고 JWT 토큰을 발급합니다.
 
 -   Endpoint: `/api/login`
 -   HTTP Method: `POST`
--   Description: 기존 사용자의 닉네임과 패스워드를 받아 인증을 수행합니다. 인증 성공 시 userID를 반환하며, 클라이언트는 이를 Chrome Storage에 저장하여 이후 모든 API 요청에 사용합니다.
+-   Description: 기존 사용자의 닉네임과 패스워드를 받아 인증을 수행합니다. 인증 성공 시 `access_token`과 `refresh_token`을 반환하며, 클라이언트는 이를 Chrome Storage에 저장하여 이후 모든 인증 API 요청에 사용합니다.
 
 #### 요청 (Input)
 
@@ -298,34 +297,29 @@
 -   성공 (200 OK):
     ```json
     {
+        "access_token": "string",
+        "refresh_token": "string",
+        "token_type": "Bearer",
         "userID": "string",
         "message": "Login successful"
     }
     ```
 -   상세:
 
-    -   `userID`: 인증된 사용자의 고유 식별자입니다.
-    -   `message`: 로그인 성공 메시지입니다. (선택사항)
-
--   예시:
-
-    ```json
-    {
-        "userID": "복지관빨대도둑",
-        "message": "Login successful"
-    }
-    ```
+    -   `access_token`: 인증 API 요청 시 `Authorization` 헤더에 사용하는 JWT 토큰입니다.
+    -   `refresh_token`: 토큰 갱신에 사용하는 JWT 토큰입니다.
+    -   `userID`: 인증된 사용자의 닉네임입니다.
 
 -   실패 (401 Unauthorized):
     ```json
     {
-        "error": "Invalid credentials"
+        "detail": "Invalid credentials"
     }
     ```
 -   실패 (404 Not Found):
     ```json
     {
-        "error": "User not found"
+        "detail": "User not found"
     }
     ```
 -   실패 (500 Internal Server Error):
@@ -334,17 +328,12 @@
         "error": "Internal server error"
     }
     ```
--   상세:
-    -   `error`: 로그인 실패 원인을 설명하는 메시지입니다.
-        -   `"Invalid credentials"`: 잘못된 패스워드
-        -   `"User not found"`: 존재하지 않는 사용자
-        -   `"Internal server error"`: 서버 내부 오류
 
 -   note: 
-    -   클라이언트는 성공 시 `userID`를 Chrome Storage에 저장합니다.
-    -   이후 모든 API 요청(`ANALYZE_PROMPT`, `FETCH_RECOMMENDED_PROMPTS`)에서 이 `userID`를 사용합니다.
-    -   로그아웃 시 클라이언트는 Chrome Storage에서 `userID`와 로그인 상태를 삭제합니다.
-    -   회원가입 API와 달리 ageGroup과 gender는 필요하지 않습니다.
+    -   클라이언트는 성공 시 `access_token`과 `userID`를 Chrome Storage에 저장합니다.
+    -   이후 모든 인증 API 요청에서 `Authorization: Bearer <access_token>` 헤더를 사용합니다.
+    -   `userID`(닉네임)는 UI 표시용으로만 사용되며, API 인증은 토큰으로만 처리합니다.
+    -   로그아웃 시 클라이언트는 Chrome Storage에서 `userID`, `access_token`, `isLoggedIn` 등을 모두 삭제합니다.
 
 ### 3.5. 닉네임 중복 확인 API
 
