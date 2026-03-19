@@ -197,7 +197,7 @@ export default function PromptInput() {
             console.log('loading...');  
             const response = await new Promise((resolve, reject) => {
                 chrome.runtime.sendMessage(
-                    { type: "ANALYZE_PROMPT", userID: currentUserID, chatID: findCurrentChatId(), prompt: getTextareaValue(textarea) }, 
+                    { type: "ANALYZE_PROMPT", chatID: findCurrentChatId(), prompt: getTextareaValue(textarea) }, 
                     (res) => res && res.error ? reject(res.error) : resolve(res)
                 );
             }); 

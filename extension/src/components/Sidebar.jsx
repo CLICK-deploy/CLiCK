@@ -41,13 +41,6 @@ export default function Sidebar() {
     useEffect(() => {
         const fetchPrompts = async () => {
             try {
-                const currentUserID = await getUserID();
-                console.log('[Sidebar] userID:', currentUserID);
-                if (!currentUserID) {
-                    console.log('[Sidebar] 로그인되지 않아 추천 프롬프트 요청 생략');
-                    return;
-                }
-
                 const chatID = findCurrentChatId();
                 console.log('[Sidebar] chatID:', chatID);
                 if (!chatID) {
@@ -58,7 +51,7 @@ export default function Sidebar() {
                 // background.js로 요청 위임
                 const response = await new Promise((resolve, reject) => {
                     chrome.runtime.sendMessage(
-                        { type: "FETCH_RECOMMENDED_PROMPTS", userID: currentUserID, chatID },
+                        { type: "FETCH_RECOMMENDED_PROMPTS", chatID },
                         (res) => res && res.error ? reject(res.error) : resolve(res)
                     );
                 });
@@ -103,12 +96,10 @@ export default function Sidebar() {
 
             // 현재 입력 내용을 백엔드에 저장 (이후 추천의 근거 데이터)
             try {
-                const currentUserID = await getUserID();
                 const chatID = findCurrentChatId();
-                if (currentUserID && chatID) {
+                if (chatID) {
                     chrome.runtime.sendMessage({
                         type: "TRACE_INPUT",
-                        userID: currentUserID,
                         chatID,
                         prompt: promptText,
                     });
