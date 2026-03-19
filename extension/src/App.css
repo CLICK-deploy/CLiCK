@@ -129,6 +129,9 @@ click-analyze-button, .click-analyze-button h3 {
 
     width: inherit;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 35vh;
     --tw-shadow: 0px 4px 4px 0px var(--tw-shadow-color, var(--shadow-color-1, #0000000a)), 0px 0px 1px 0px var(--tw-shadow-color, var(--shadow-color-2, #0000009e));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
 
@@ -235,7 +238,9 @@ click-analyze-button, .click-analyze-button h3 {
 }
 .panel-body {
     padding: 0;
-    overflow: auto;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 .text-container {
     font-size: var(--composer-font-size, 0.8rem);
@@ -259,6 +264,7 @@ click-analyze-button, .click-analyze-button h3 {
     display: flex;
     align-items: center;
     gap: 0.7rem;
+    padding-top: calc(var(--spacing, .25rem) * 2);
     padding-bottom: calc(var(--spacing, .25rem) * 2);
     padding-left: calc(var(--spacing, .25rem) * 4);
     padding-right: calc(var(--spacing, .25rem) * 4);

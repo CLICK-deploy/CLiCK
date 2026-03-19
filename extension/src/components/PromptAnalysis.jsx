@@ -134,8 +134,8 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
                 <h3>GPT Prompt Analysis</h3>
                 <button className="close-btn" onClick={onClose}>×</button>
             </div>
-            <div className="panel-body" ref={bodyRef} 
-                style={{padding: 0, height: bodyHeight, overflow: 'auto'}}>
+            <div className="panel-body" ref={bodyRef}
+                style={{padding: 0}}>
                 <div className="text-container" 
                     style={{...fallbackStyle, margin: 0, whiteSpace: 'pre-wrap'}}
                     dangerouslySetInnerHTML={{ __html: getColoredText }}>
