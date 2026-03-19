@@ -39,28 +39,21 @@ function injectSidebar() {
 }
 
 function injectSettings() {
-    // 공유하기 버튼 찾기 (스크린샷의 버튼)
-    const shareButton = document.querySelector('[data-testid="share-chat-button"]');
+    const container = document.querySelector('[class="flex items-center justify-end gap-2 overflow-x-hidden"]');
     
-    if (shareButton && !document.querySelector('#click-settings-root')) {
-        // Settings 컴포넌트를 담을 루트 생성
+    if (container && !document.querySelector('#click-settings-root')) {
         const settingsRoot = document.createElement('div');
         settingsRoot.id = 'click-settings-root';
         
-        // 공유하기 버튼의 부모 컨테이너 찾기
-        const parentContainer = shareButton.parentElement;
+        // 첫 번째 컴포넌트로 삽입
+        container.prepend(settingsRoot);
         
-        if (parentContainer) {
-            // 공유하기 버튼 바로 앞에 삽입
-            parentContainer.insertBefore(settingsRoot, shareButton);
-            
-            const root = ReactDOM.createRoot(settingsRoot);
-            root.render(
-                <React.StrictMode>
-                    <Settings />
-                </React.StrictMode>
-            );
-        }
+        const root = ReactDOM.createRoot(settingsRoot);
+        root.render(
+            <React.StrictMode>
+                <Settings />
+            </React.StrictMode>
+        );
     }
 }
 
