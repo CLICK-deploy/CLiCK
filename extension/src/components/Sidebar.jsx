@@ -3,6 +3,11 @@ import Trailp from '../../images/trailing-pair.svg?react';
 
 const MAX_PROMPTS = 2;
 
+const TEMPLATES = [
+    { id: 't1', title: '대화 기반 성격 진단', content: '지금까지의 대화에 따라 내 성격을 진단해줘.' },
+    { id: 't6', title: '영어로 번역', content: '방금 내가 작성한 내용을 자연스러운 영어로 번역해줘.' },
+];
+
 export default function Sidebar() {
     const [recommendedPrompts, setRecommendedPrompts] = useState([]);
     const [submitCount, setSubmitCount] = useState(0); 
@@ -176,6 +181,26 @@ export default function Sidebar() {
                             </button>
                         </div>
                         <div className="trailing text-token-text-tertiary" tabIndex="-1"></div>
+                    </div>
+                </a>
+            ))}
+            </div>
+
+            <div className="group/sidebar-expando-section mb-[var(--sidebar-expanded-section-margin-bottom)]">
+                <button aria-expanded="true" className="text-token-text-tertiary flex w-full items-center justify-start gap-0.5 px-4 py-1.5">
+                    <h2 className="__menu-label" data-no-spacing="true">
+                        Templates
+                    </h2>
+                </button>
+
+            {TEMPLATES.map(p => (
+                <a tabIndex="0" data-fill className="group __menu-item hoverable" draggable="false" data-discover="true" key={p.id} onClick={() => applyPrompt(p.content)}>
+                    <div className="flex min-w-0 grow items-center gap-2.5 group-data-no-contents-gap:gap-0">
+                        <div className="truncate">
+                            <span className="dir-auto">
+                                {p.title}
+                            </span>
+                        </div>
                     </div>
                 </a>
             ))}
