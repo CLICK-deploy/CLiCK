@@ -29,9 +29,12 @@ export default function Sidebar() {
     };
 
     // 현재 채팅방 ID 찾기 (URL에서 직접 읽기)
+    // 일반 채팅: /c/{id}
+    // 프로젝트 채팅: /g/{gpt-id}/c/{id}
     const findCurrentChatId = () => {
         const path = window.location.pathname;
-        return path.startsWith('/c/') ? path : null;
+        const match = path.match(/\/c\/([0-9a-f-]+)/i);
+        return match ? `/c/${match[1]}` : null;
     };
 
     // 백엔드에서 프롬프트 가져옴

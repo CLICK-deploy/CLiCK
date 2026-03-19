@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 
+const PLAN_LABEL = { free: 'Free 플랜', naive: 'Naive 플랜', pro: 'Pro 플랜' };
+
 export default function Settings() {
     const [isOpen, setIsOpen] = useState(false);
     const [popupPos, setPopupPos] = useState({ top: 0, right: 0 });
     const [dialog, setDialog] = useState(null); // 'confirm' | 'success' | null
+    const [userInfo, setUserInfo] = useState(null); // { userID, plan } | null
     const popoverRef = useRef(null);
     const buttonRef = useRef(null);
 
@@ -43,6 +46,14 @@ export default function Settings() {
     const togglePopover = () => {
         if (!isOpen) {
             setPopupPos(getButtonPosition());
+            // 팝업 열릴 때 최신 유저 정보 로드
+            chrome.storage.local.get(['userID', 'isLoggedIn', 'plan'], (data) => {
+                if (data.isLoggedIn && data.userID) {
+                    setUserInfo({ userID: data.userID, plan: data.plan || 'free' });
+                } else {
+                    setUserInfo(null);
+                }
+            });
         }
         setIsOpen(!isOpen);
     };
@@ -77,6 +88,33 @@ export default function Settings() {
                         data-orientation="vertical" 
                         style={{outline: 'none', '--radix-dropdown-menu-content-transform-origin': 'var(--radix-popper-transform-origin)', '--radix-dropdown-menu-content-available-width': 'var(--radix-popper-available-width)', '--radix-dropdown-menu-content-available-height': 'var(--radix-popper-available-height)', '--radix-dropdown-menu-trigger-width': 'var(--radix-popper-anchor-width)', '--radix-dropdown-menu-trigger-height': 'var(--radix-popper-anchor-height)'}}
                     >
+                        {/* 유저 정보 카드 (로그인 시에만 표시) */}
+                        {userInfo && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '12px',
+                                padding: '12px 16px 10px',
+                                borderBottom: '1px solid rgba(128,128,128,0.15)',
+                                marginBottom: '4px'
+                            }}>
+                                <div style={{
+                                    width: '36px', height: '36px', borderRadius: '50%',
+                                    background: 'var(--theme-user-selection-bg)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '13px', fontWeight: 700, color: '#fff',
+                                    flexShrink: 0, userSelect: 'none'
+                                }}>
+                                    {userInfo.userID.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {userInfo.userID}
+                                    </span>
+                                    <span style={{ fontSize: '12px', opacity: 0.55, whiteSpace: 'nowrap' }}>
+                                        {PLAN_LABEL[userInfo.plan] ?? userInfo.plan}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                         <div 
                             role="menuitem" 
                             tabIndex={0} 
@@ -98,6 +136,7 @@ export default function Settings() {
                             로그아웃
                         </div>
 
+                        {!userInfo && (
                         <div 
                             role="menuitem" 
                             tabIndex={0} 
@@ -118,7 +157,9 @@ export default function Settings() {
                             </div>
                             로그인
                         </div>
+                        )}
 
+                        {!userInfo && (
                         <div 
                             role="menuitem" 
                             tabIndex={0} 
@@ -140,6 +181,7 @@ export default function Settings() {
                             </div>
                             회원가입
                         </div>
+                        )}
 
                         <div 
                             role="menuitem" 
