@@ -1,15 +1,3 @@
-/* Sidebar 삽입 스타일 */
-#click-sidebar-root {
-    /* margin-bottom: 1rem; */
-    /* font-family: var(--composer-font-family, var(--font-sans, 'Inter', 'Noto Sans KR', 'Apple SD Gothic Neo', Arial, sans-serif));
-    font-size: var(--composer-font-size, 1rem);
-    color: var(--composer-input-color, var(--token-text-primary, #ececf1));
-    background: var(--composer-input-bg, var(--token-main-surface-primary, #fff));
-    border: var(--composer-input-border, 1px solid var(--token-border-light, #d9d9e3));
-    border-radius: var(--composer-input-radius, 12px);
-    padding: 0.5rem 0; */ 
-}
-
 :root {
   --click-background-color: #ffffff;
   --click-container-color: #f7f7f8;

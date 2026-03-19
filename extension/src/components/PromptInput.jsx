@@ -6,7 +6,7 @@ import Panelopen from '../../images/panelopen.svg?react';
 
 function getTextareaValue(textarea) {
     if (!textarea) return '';
-    return textarea.innerText || '';
+    return (textarea.innerText || '').replace(/\n{2,}/g, '\n');
 }
 
 export default function PromptInput() {
