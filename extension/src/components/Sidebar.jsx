@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Trailp from '../../images/trailing-pair.svg?react';
 
 const MAX_PROMPTS = 2;
@@ -10,7 +10,9 @@ const TEMPLATES = [
 
 export default function Sidebar() {
     const [recommendedPrompts, setRecommendedPrompts] = useState([]);
-    const [submitCount, setSubmitCount] = useState(0); 
+    const [submitCount, setSubmitCount] = useState(0);
+    // 추천 프롬프트 클릭 후 수정 없이 제출했는지 추적
+    const lastAppliedRecommendationRef = useRef(null); // { id, content }
 
     // 로그인된 사용자 ID 가져오기
     const getUserID = async () => {
@@ -99,6 +101,14 @@ export default function Sidebar() {
             if (!promptText) return;
             console.log("메시지 제출 감지됨! -> 프롬프트 갱신 요청");
 
+            // 추천 프롬프트가 수정 없이 그대로 제출됐는지 확인
+            const applied = lastAppliedRecommendationRef.current;
+            const usedRecommendedId = (applied && applied.content === promptText)
+                ? applied.id
+                : null;
+            // 제출 후 초기화
+            lastAppliedRecommendationRef.current = null;
+
             // 현재 입력 내용을 백엔드에 저장 (이후 추천의 근거 데이터)
             try {
                 const chatID = findCurrentChatId();
@@ -107,6 +117,7 @@ export default function Sidebar() {
                         type: "TRACE_INPUT",
                         chatID,
                         prompt: promptText,
+                        ...(usedRecommendedId && { recommendedPromptId: usedRecommendedId }),
                     });
                 }
             } catch (e) {
@@ -137,20 +148,34 @@ export default function Sidebar() {
         document.addEventListener('click', handleGlobalClick, true);
         document.addEventListener('keydown', handleKeyDown, true);
 
+        // textarea 직접 수정 시 추천 프롬프트 추적 초기화
+        const handleTextareaInput = (e) => {
+            if (e.target.id !== 'prompt-textarea') return;
+            const applied = lastAppliedRecommendationRef.current;
+            if (applied && e.target.innerText.trim() !== applied.content) {
+                lastAppliedRecommendationRef.current = null;
+            }
+        };
+        document.addEventListener('input', handleTextareaInput, true);
+
         return () => {
             document.removeEventListener('click', handleGlobalClick, true);
             document.removeEventListener('keydown', handleKeyDown, true);
+            document.removeEventListener('input', handleTextareaInput, true);
         };
     }, []);
 
     // prompt를 textarea에 적용하는 함수
-    const applyPrompt = (content) => {
+    const applyPrompt = (content, recommendedId = null) => {
         const textarea = document.querySelector('#prompt-textarea');
         if (!textarea) return;
-            
-        textarea.innerText = content; 
-        textarea.dispatchEvent(new Event('input', { bubbles: true })); 
+
+        textarea.innerText = content;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
         textarea.focus();
+
+        // 추천 프롬프트 클릭 시 id 기록, 일반 사용 시 클리어
+        lastAppliedRecommendationRef.current = recommendedId ? { id: recommendedId, content } : null;
     };
 
     return (
@@ -163,7 +188,7 @@ export default function Sidebar() {
                 </button>
 
             {recommendedPrompts.map(p => (
-                <a tabIndex="0" data-fill className="group __menu-item hoverable" draggable="true" data-discover="true" key={p.id} onClick={() => applyPrompt(p.content)}>
+                <a tabIndex="0" data-fill className="group __menu-item hoverable" draggable="true" data-discover="true" key={p.id} onClick={() => applyPrompt(p.content, p.id)}>
                     <div className="flex min-w-0 grow items-center gap-2.5 group-data-no-contents-gap:gap-0">
                         <div className="truncate">
                             <span className="dir-auto">

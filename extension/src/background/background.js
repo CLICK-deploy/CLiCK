@@ -159,6 +159,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     sendResponse({ log: '로그인이 필요합니다.' });
                     return;
                 }
+                const traceBody = {
+                    chatID: message.chatID,
+                    prompt: message.prompt,
+                };
+                if (message.recommendedPromptId != null) {
+                    traceBody.recommendedPromptId = message.recommendedPromptId;
+                }
                 const response = await fetch(
                     `${API_BASE_URL}/api/trace_input`,
                     {
@@ -167,10 +174,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             "Content-Type": "application/json",
                             "Authorization": `Bearer ${token}`,
                         },
-                        body: JSON.stringify({
-                            chatID: message.chatID,
-                            prompt: message.prompt,
-                        }),
+                        body: JSON.stringify(traceBody),
                     }
                 );
                 if (!response.ok) throw new Error(`trace_input failed: ${response.status}`);
