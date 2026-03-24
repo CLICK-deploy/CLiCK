@@ -115,6 +115,7 @@ export default function Settings() {
                                 </div>
                             </div>
                         )}
+                        {userInfo && (
                         <div 
                             role="menuitem" 
                             tabIndex={0} 
@@ -135,6 +136,7 @@ export default function Settings() {
                             </div>
                             로그아웃
                         </div>
+                        )}
 
                         {!userInfo && (
                         <div 

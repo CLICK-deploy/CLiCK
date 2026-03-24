@@ -24,15 +24,9 @@
 
 -   Endpoint: `/api/analyze-prompt`
 -   HTTP Method: `POST`
--   Description: 전달받은 프롬프트 텍스트를 백엔드의 LLM을 통해 분석하고, 발견된 문제점(태그), 부분 수정안(패치), 그리고 전체 수정 제안을 포함하는 JSON 객체를 반환합니다.
--   인증: `Authorization: Bearer <access_token>` 헤더 필요 (공통 사항 참조)
-
+-   Description\*\*: 전달받은 프롬프트 텍스트를 백엔드의 LLM(OpenAI)을 통해 분석하고, 발견된 문제점(태그), 부분 수정안(패치), 그리고 전체 수정 제안을 포함하는 JSON 객체를 반환합니다.
 #### 요청 (Input)
 
--   Header:
-    ```
-    Authorization: Bearer <access_token>
-    ```
 -   Body:
     ```json
     {
@@ -95,8 +89,6 @@
     }
     ```
 
--   note. tags에 들어갈 string을 일관된 표현으로 전달해주시면, 프론트에서 표현들을 받아 color를 지정해놓을 생각입니다. 태그들이 오는 순서는 input으로 들어온 string에서의 개선 순서대로 patches의 순서와 동일하게 주시면 될 것 같습니다. c++로 보면 patches는 vector<unordered_map<string, unordered_map<string, string>>>이 될 것 같습니다.
-
 -   실패 (4xx/5xx):
     ```json
     {
@@ -113,14 +105,9 @@
 -   Endpoint: `/api/trace_input`
 -   HTTP Method: `POST`
 -   Description: 사용자가 프롬프트를 제출할 때마다 호출됩니다. 프롬프트 텍스트와 채팅 ID를 저장합니다. `recommendedPromptId`가 포함된 경우, 해당 추천 프롬프트가 수정 없이 사용된 것으로 간주하여 별도로 기록합니다.
--   인증: `Authorization: Bearer <access_token>` 헤더 필요 (공통 사항 참조)
 
 #### 요청 (Input)
 
--   Header:
-    ```
-    Authorization: Bearer <access_token>
-    ```
 -   Body:
     ```json
     {
@@ -131,28 +118,7 @@
     ```
 -   상세:
 
-    -   `chatID`: 현재 채팅방의 고유 ID입니다.
-    -   `prompt`: 사용자가 제출한 프롬프트 텍스트입니다.
     -   `recommendedPromptId` (선택): 추천 프롬프트를 클릭 후 수정 없이 그대로 제출한 경우에만 포함됩니다. 해당 추천 프롬프트의 `id`입니다. 사용자가 직접 입력하거나 추천 프롬프트를 수정하여 제출한 경우에는 이 필드가 없습니다.
-
--   예시 (일반 입력):
-
-    ```json
-    {
-        "chatID": "/c/68e396fc-2590-8324-9f0c-4388bf926421",
-        "prompt": "파이썬 리스트 컴프리헨션 예제 알려줘"
-    }
-    ```
-
--   예시 (추천 프롬프트 그대로 사용):
-
-    ```json
-    {
-        "chatID": "/c/68e396fc-2590-8324-9f0c-4388bf926421",
-        "prompt": "C++에서 스마트 포인터와 일반 포인터의 메모리 관리 방식 차이를 설명해줘.",
-        "recommendedPromptId": 1
-    }
-    ```
 
 #### 응답 (Output)
 
@@ -172,7 +138,6 @@
 
 -   note:
     -   `recommendedPromptId`가 있을 때 백엔드는 해당 추천 프롬프트의 사용 카운트를 증가시키거나 별도 테이블에 기록하여 추천 효과를 측정할 수 있습니다.
-    -   이 API는 분석 트리거(ANALYZE_PROMPT)와 별개로, 제출 시점마다 항상 호출됩니다.
 
 ---
 
@@ -182,15 +147,10 @@
 
 -   Endpoint: `/api/recommended-prompts`
 -   HTTP Method: `POST`
--   Description: 현재 채팅 ID를 전달받습니다. 특정 채팅 ID가 제공되면 해당 채팅의 대화 내용을 기반으로, 채팅 ID가 `null`이면 사용자의 전체 대화 기록을 기반으로 맞춤형 추천 프롬프트를 생성하여 반환합니다.
--   인증: `Authorization: Bearer <access_token>` 헤더 필요 (공통 사항 참조)
+-   Description: 사용자 식별자와 현재 채팅 ID를 전달받습니다. 특정 채팅 ID가 제공되면 해당 채팅의 대화 내용을 기반으로, 채팅 ID가 `null`이면 사용자의 전체 대화 기록을 기반으로 맞춤형 추천 프롬프트를 생성하여 반환합니다.
 
 #### 요청 (Input)
 
--   Header:
-    ```
-    Authorization: Bearer <access_token>
-    ```
 -   Body:
     ```json
     {

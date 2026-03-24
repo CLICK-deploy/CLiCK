@@ -91,6 +91,7 @@ export default function PromptInput() {
                         /* X 버튼 누르면 분석 결과 지우기 */
                         onClose={() => {
                             setPanelVisible(false);
+                            setAnalysis(null);
                         }}
                         onApplyAll={handleApplyAll}
                         panelStyle={panelSize}
@@ -196,12 +197,18 @@ export default function PromptInput() {
 
             console.log('loading...');  
             const response = await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject('분석 요청 시간이 초과되었습니다. 다시 시도해주세요.'), 60000);
                 chrome.runtime.sendMessage(
                     { type: "ANALYZE_PROMPT", chatID: findCurrentChatId(), prompt: getTextareaValue(textarea) }, 
-                    (res) => res && res.error ? reject(res.error) : resolve(res)
+                    (res) => {
+                        clearTimeout(timeout);
+                        if (chrome.runtime.lastError) { reject(chrome.runtime.lastError.message); return; }
+                        if (!res) { reject('응답이 없습니다. 서버 연결을 확인해주세요.'); return; }
+                        if (res.error) { reject(res.error); return; }
+                        resolve(res);
+                    }
                 );
-            }); 
-            // await new Promise(resolve => setTimeout(resolve, 3000));
+            });
             console.log('loading complete');
 
             setAnalysis({ source: getTextareaValue(textarea), result: response });

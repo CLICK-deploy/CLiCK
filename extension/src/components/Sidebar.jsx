@@ -13,6 +13,8 @@ export default function Sidebar() {
     const [submitCount, setSubmitCount] = useState(0);
     // 추천 프롬프트 클릭 후 수정 없이 제출했는지 추적
     const lastAppliedRecommendationRef = useRef(null); // { id, content }
+    // 중복 제출 방지 (keydown + click 이중 발생)
+    const lastSubmitTimeRef = useRef(0);
 
     // 로그인된 사용자 ID 가져오기
     const getUserID = async () => {
@@ -98,6 +100,10 @@ export default function Sidebar() {
     // 버튼 클릭 및 엔터 키 감지 
     useEffect(() => {
         const triggerSubmit = async (promptText) => {
+            const now = Date.now();
+            if (now - lastSubmitTimeRef.current < 500) return;
+            lastSubmitTimeRef.current = now;
+
             if (!promptText) return;
             console.log("메시지 제출 감지됨! -> 프롬프트 갱신 요청");
 

@@ -114,7 +114,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const storage = await chrome.storage.local.get(['access_token']);
                 const token = storage.access_token;
                 if (!token) {
-                    sendResponse({ alert: '로그인이 필요합니다.' });
+                    sendResponse({ error: '로그인이 필요합니다.' });
                     return;
                 }
                 const response = await fetch(
