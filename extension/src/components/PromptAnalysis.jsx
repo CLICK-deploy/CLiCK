@@ -184,7 +184,7 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
 
                 <button className="analysis-btn" 
                     onClick={onAnalyze} 
-                    disabled={loading}
+                    disabled={loading || allPatches.length > 0}
                     style={{
                         borderColor: panelDetailStyle.borderColor,
                         '--tw-shadow': panelDetailStyle['--tw-shadow'],
