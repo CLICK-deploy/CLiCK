@@ -8,7 +8,7 @@ const TAG_COLORS = {
 };
 
 export default function PromptAnalysis({ source, result, onClose, onApplyAll, panelStyle, onAnalyze, loading }) {
-    const [enabledTags, setEnabledTags] = useState([]);
+    const [enabledPatchKeys, setEnabledPatchKeys] = useState([]);
     const bodyRef = useRef(null);
     const headerRef = useRef(null);
     const [bodyHeight, setBodyHeight] = useState();
@@ -36,68 +36,64 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
         return () => observer.disconnect();
     }, []);
 
-    // 결과가 변경될 때 태그 상태 초기화
+    // source 순서대로 정렬된 패치 목록
+    const allPatches = useMemo(() => {
+        if (!result?.patches) return [];
+        const entries = [];
+        Object.entries(result.patches).forEach(([tag, patches]) => {
+            if (!Array.isArray(patches)) return;
+            patches.forEach((patch, idx) => {
+                const pos = source.indexOf(patch.from);
+                if (pos !== -1) entries.push({ key: `${tag}::${idx}`, tag, patch, pos });
+            });
+        });
+        return entries.sort((a, b) => a.pos - b.pos);
+    }, [result, source]);
+
+    // 결과가 변경될 때 모든 패치 활성화
     useEffect(() => {
-        if (result?.tags) {
-            // 모든 태그를 활성화 상태로 시작
-            setEnabledTags(result.tags);
-        }
+        setEnabledPatchKeys(allPatches.map(p => p.key));
     }, [result]);
 
-    const toggleTag = (tag) => {
-        setEnabledTags(prev => 
-            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    const togglePatch = (key) => {
+        setEnabledPatchKeys(prev =>
+            prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
         );
     };
 
     const getColoredText = useMemo(() => {
-        if (!result?.full_suggestion) return source;
-        
-        let text = result.full_suggestion;
-        const replacements = [];
+        if (!allPatches.length) return source;
 
-        Object.entries(result.patches || {}).forEach(([tag, patches]) => {
-            if (!Array.isArray(patches)) return;
-            
-            patches.forEach(patch => {
-                // 활성화된 태그의 교정된 텍스트(to)에만 색상 적용
-                if (enabledTags.includes(tag) && text.includes(patch.to)) {
-                    replacements.push({
-                        from: patch.to,
-                        to: `<span style="color: ${TAG_COLORS[tag]};">${patch.to}</span>`,
-                        index: text.indexOf(patch.to)
-                    });
-                }
-            });
-        });
-
-        // 뒤에서부터 적용하여 인덱스 문제 방지
-        replacements
-            .sort((a, b) => b.index - a.index)
-            .forEach(({ from, to }) => {
-                if (text.includes(from)) {
-                    text = text.replace(from, to);
-                }
-            });
-
-        return text;
-    }, [result, enabledTags, source]);
+        const activeSet = new Set(enabledPatchKeys);
+        let output = '';
+        let pos = 0;
+        for (const { key, tag, patch, pos: idx } of allPatches) {
+            if (idx < pos) continue;
+            output += source.slice(pos, idx);
+            if (activeSet.has(key)) {
+                output += `<span style="color: ${TAG_COLORS[tag]};">${patch.to}</span>`;
+            } else {
+                output += patch.from;
+            }
+            pos = idx + patch.from.length;
+        }
+        output += source.slice(pos);
+        return output;
+    }, [allPatches, enabledPatchKeys, source]);
 
     // TODO: 함수명 PromptInput 함수와 겹침
-    // Apply 버튼 클릭 시 활성화된 태그의 교정사항만 적용
+    // Apply 버튼 클릭 시 활성화된 패치만 적용
     const handleApplyAll = () => {
-        if (!result?.full_suggestion) return;
-        
-        // 활성화된 태그의 교정사항만 적용
-        let finalText = source;
-        Object.entries(result.patches || {}).forEach(([tag, patches]) => {
-            if (Array.isArray(patches) && enabledTags.includes(tag)) {
-                patches.forEach(patch => {
-                    finalText = finalText.replace(patch.from, patch.to);
-                });
-            }
-        });
+        if (!allPatches.length) return;
 
+        const activeSet = new Set(enabledPatchKeys);
+        const active = allPatches.filter(p => activeSet.has(p.key));
+
+        let finalText = source;
+        for (let i = active.length - 1; i >= 0; i--) {
+            const { patch, pos } = active[i];
+            finalText = finalText.slice(0, pos) + patch.to + finalText.slice(pos + patch.from.length);
+        }
         onApplyAll(finalText);
     };
 
@@ -144,39 +140,35 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
 
             <div className='panel-footer' style={fallbackStyle}> 
                 <div className="tag-bar">
-                    {(result.tags || []).map(tag => (
-                        <button 
-                            key={tag} 
-                            className={`tag ${enabledTags.includes(tag) ? 'active' : ''}`}
-                            onClick={() => toggleTag(tag)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 12px',
-                                borderRadius: '20px',
-                                cursor: 'pointer',
-                                background: enabledTags.includes(tag) ? 
-                                    TAG_COLORS[tag] : panelDetailStyle.background,
-                                color: enabledTags.includes(tag) ? '#fff' : panelDetailStyle.color,
-                                transition: 'all 0.2s ease',
-                                borderColor: panelDetailStyle.borderColor,
-                            '--tw-shadow': panelDetailStyle['--tw-shadow'],
-                            boxShadow: panelDetailStyle.boxShadow,
-                            }}
-                        >
-                            <span 
+                    {allPatches.map(({ key, tag, patch }) => {
+                        const isActive = enabledPatchKeys.includes(key);
+                        const label = tag;
+                        return (
+                            <button
+                                key={key}
+                                className={`tag ${isActive ? 'active' : ''}`}
+                                onClick={() => togglePatch(key)}
+                                title={`${tag}: "${patch.from}" → "${patch.to}"`}
                                 style={{
-                                    width: '10px',
-                                    height: '10px',
-                                    borderRadius: '50%',
-                                    background: TAG_COLORS[tag],
-                                    display: 'inline-block'
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '6px 12px',
+                                    borderRadius: '20px',
+                                    cursor: 'pointer',
+                                    background: isActive ? TAG_COLORS[tag] : panelDetailStyle.background,
+                                    color: isActive ? '#fff' : panelDetailStyle.color,
+                                    transition: 'all 0.2s ease',
+                                    borderColor: panelDetailStyle.borderColor,
+                                    '--tw-shadow': panelDetailStyle['--tw-shadow'],
+                                    boxShadow: panelDetailStyle.boxShadow,
                                 }}
-                            />
-                            {tag}
-                        </button>
-                    ))}
+                            >
+                                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: TAG_COLORS[tag], display: 'inline-block', flexShrink: 0 }} />
+                                {label}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 <button className="apply-all-btn" onClick={handleApplyAll}

@@ -105,26 +105,73 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     if (tabId === clickAppTabId) clickAppTabId = null;
 });
 
+// 토큰 자동 갱신 헬퍼
+async function refreshAccessToken() {
+    const storage = await chrome.storage.local.get(['refresh_token']);
+    const refreshToken = storage.refresh_token;
+    if (!refreshToken) throw new Error('리프레시 토큰이 없습니다.');
+
+    const res = await fetch(`${API_BASE_URL}/api/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) throw new Error('리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.');
+
+    const data = await res.json();
+    await chrome.storage.local.set({ access_token: data.access_token });
+    return data.access_token;
+}
+
+// JWT의 만료 시각(ms) 추출
+function getTokenExpiry(token) {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.exp * 1000;
+    } catch {
+        return 0;
+    }
+}
+
+// Authorization 헤더를 포함한 fetch — 만료 5분 전 미리 갱신, 401 시 1회 재시도
+async function fetchWithAuth(url, options = {}) {
+    const storage = await chrome.storage.local.get(['access_token']);
+    let token = storage.access_token;
+    if (!token) throw new Error('로그인이 필요합니다.');
+
+    // 토큰이 5분 이내로 남았으면 요청 전에 미리 갱신
+    if (getTokenExpiry(token) - Date.now() < 5 * 60 * 1000) {
+        token = await refreshAccessToken();
+    }
+
+    const makeRequest = (t) => fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+            Authorization: `Bearer ${t}`,
+        },
+    });
+
+    let response = await makeRequest(token);
+    if (response.status === 401) {
+        // 만료 체크를 통과했어도 혹시 실패하면 한 번 더 갱신 후 재시도
+        token = await refreshAccessToken();
+        response = await makeRequest(token);
+    }
+    return response;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 프롬프트 분석 요청
     if (message.type === "ANALYZE_PROMPT") {
         // 비동기 응답을 위해 true를 반환해야 합니다.
         (async () => {
             try {
-                const storage = await chrome.storage.local.get(['access_token']);
-                const token = storage.access_token;
-                if (!token) {
-                    sendResponse({ error: '로그인이 필요합니다.' });
-                    return;
-                }
-                const response = await fetch(
+                const response = await fetchWithAuth(
                     `${API_BASE_URL}/api/analyze-prompt`,
                     {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}`,
-                        },
                         body: JSON.stringify({ 
                             chatID: message.chatID,
                             prompt: message.prompt 
@@ -153,12 +200,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "TRACE_INPUT") {
         (async () => {
             try {
-                const storage = await chrome.storage.local.get(['access_token']);
-                const token = storage.access_token;
-                if (!token) {
-                    sendResponse({ log: '로그인이 필요합니다.' });
-                    return;
-                }
                 const traceBody = {
                     chatID: message.chatID,
                     prompt: message.prompt,
@@ -166,14 +207,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 if (message.recommendedPromptId != null) {
                     traceBody.recommendedPromptId = message.recommendedPromptId;
                 }
-                const response = await fetch(
+                const response = await fetchWithAuth(
                     `${API_BASE_URL}/api/trace_input`,
                     {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}`,
-                        },
                         body: JSON.stringify(traceBody),
                     }
                 );
@@ -192,20 +229,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "FETCH_RECOMMENDED_PROMPTS") {
         (async () => {
             try {
-                const storage = await chrome.storage.local.get(['access_token']);
-                const token = storage.access_token;
-                if (!token) {
-                    sendResponse({ log: '로그인이 필요합니다.' });
-                    return;
-                }
-                const response = await fetch(
+                const response = await fetchWithAuth(
                     `${API_BASE_URL}/api/recommended-prompts`,
                     {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}`,
-                        },
                         body: JSON.stringify({ 
                             chatID: message.chatID 
                         }),
@@ -281,6 +308,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 await chrome.storage.local.set({
                     userID: data.userID || message.userId,
                     access_token: data.access_token,
+                    refresh_token: data.refresh_token,
                     isLoggedIn: true,
                     loginTime: Date.now()
                 });
@@ -334,6 +362,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 await chrome.storage.local.set({
                     userID: data.userID || message.userId,
                     access_token: data.access_token,
+                    refresh_token: data.refresh_token,
                     isLoggedIn: true,
                     loginTime: Date.now()
                 });
@@ -359,7 +388,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "LOGOUT") {
         (async () => {
             try {
-                await chrome.storage.local.remove(['userID', 'access_token', 'isLoggedIn', 'loginTime']);
+                await chrome.storage.local.remove(['userID', 'access_token', 'refresh_token', 'isLoggedIn', 'loginTime']);
                 sendResponse({ success: true }); 
             } catch (error) {
                 console.error("로그아웃 실패:", error);
