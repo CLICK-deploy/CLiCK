@@ -16,6 +16,17 @@ export default function Sidebar() {
     // 중복 제출 방지 (keydown + click 이중 발생)
     const lastSubmitTimeRef = useRef(0);
 
+    // 세션 만료 감지 → 사이드바 초기화 (알림은 PromptInput에서 표시)
+    useEffect(() => {
+        const handler = (message) => {
+            if (message.type === 'SESSION_EXPIRED') {
+                setRecommendedPrompts([]);
+            }
+        };
+        chrome.runtime.onMessage.addListener(handler);
+        return () => chrome.runtime.onMessage.removeListener(handler);
+    }, []);
+
     // 로그인된 사용자 ID 가져오기
     const getUserID = async () => {
         try {

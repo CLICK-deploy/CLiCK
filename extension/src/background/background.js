@@ -127,10 +127,20 @@ async function refreshAccessToken() {
 function getTokenExpiry(token) {
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
+        if (!payload.exp) return Infinity; // exp 필드 없으면 만료 없음으로 간주
         return payload.exp * 1000;
     } catch {
-        return 0;
+        // 파싱 실패 시 Infinity 반환 → 프리엠프티브 갱신 미발생, 401 발생 시 갱신 처리
+        return Infinity;
     }
+}
+
+// 세션 만료 처리 — 스토리지 초기화 후 모든 탭에 SESSION_EXPIRED 브로드캐스트
+async function handleSessionExpired() {
+    await chrome.storage.local.remove(['userID', 'access_token', 'refresh_token', 'isLoggedIn', 'loginTime']);
+    chrome.tabs.query({ url: ['https://chatgpt.com/*', 'https://chat.openai.com/*'] }, (tabs) => {
+        tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: 'SESSION_EXPIRED' }));
+    });
 }
 
 // Authorization 헤더를 포함한 fetch — 만료 5분 전 미리 갱신, 401 시 1회 재시도
@@ -139,9 +149,13 @@ async function fetchWithAuth(url, options = {}) {
     let token = storage.access_token;
     if (!token) throw new Error('로그인이 필요합니다.');
 
-    // 토큰이 5분 이내로 남았으면 요청 전에 미리 갱신
+    // 토큰이 5분 이내로 남았으면 요청 전에 미리 갱신 (실패해도 기존 토큰으로 계속 시도)
     if (getTokenExpiry(token) - Date.now() < 5 * 60 * 1000) {
-        token = await refreshAccessToken();
+        try {
+            token = await refreshAccessToken();
+        } catch (e) {
+            console.warn('[fetchWithAuth] 선제적 토큰 갱신 실패, 기존 토큰으로 진행:', e.message);
+        }
     }
 
     const makeRequest = (t) => fetch(url, {
@@ -155,9 +169,16 @@ async function fetchWithAuth(url, options = {}) {
 
     let response = await makeRequest(token);
     if (response.status === 401) {
-        // 만료 체크를 통과했어도 혹시 실패하면 한 번 더 갱신 후 재시도
-        token = await refreshAccessToken();
-        response = await makeRequest(token);
+        // 만료 체크를 통과했어도 실패하면 갱신 재시도, 그것도 실패하면 세션 만료 처리
+        try {
+            token = await refreshAccessToken();
+            response = await makeRequest(token);
+        } catch (e) {
+            await handleSessionExpired();
+            const err = new Error('SESSION_EXPIRED');
+            err.isSessionExpired = true;
+            throw err;
+        }
     }
     return response;
 }
@@ -200,6 +221,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "TRACE_INPUT") {
         (async () => {
             try {
+                // 토큰 없으면 (테스트 계정 or 미로그인) 조용히 스킵
+                const { access_token } = await chrome.storage.local.get(['access_token']);
+                if (!access_token) { sendResponse({ skipped: true }); return; }
+
                 const traceBody = {
                     chatID: message.chatID,
                     prompt: message.prompt,
@@ -229,6 +254,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "FETCH_RECOMMENDED_PROMPTS") {
         (async () => {
             try {
+                // 토큰 없으면 (테스트 계정 or 미로그인) 조용히 스킵
+                const { access_token } = await chrome.storage.local.get(['access_token']);
+                if (!access_token) { sendResponse({}); return; }
+
                 const response = await fetchWithAuth(
                     `${API_BASE_URL}/api/recommended-prompts`,
                     {
@@ -264,7 +293,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 if (message.userId === "test" && message.password === "tt") {
                     console.log("테스트 계정 로그인 성공");
                     
-                    // Chrome Storage에 저장
+                    // 기존 토큰 제거 후 테스트 계정 상태 저장 (stale 토큰이 남지 않도록)
+                    await chrome.storage.local.remove(['access_token', 'refresh_token']);
                     await chrome.storage.local.set({
                         userID: "test",
                         isLoggedIn: true,
@@ -304,14 +334,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
                 const data = await response.json();
                 
+                // 디버그: 백엔드 로그인 응답 확인
+                console.log("[LOGIN] 백엔드 응답 키:", Object.keys(data));
+                console.log("[LOGIN] access_token 존재:", !!data.access_token);
+                console.log("[LOGIN] refresh_token 존재:", !!data.refresh_token);
+
                 // 로그인 성공 시 Chrome Storage에 저장 (토큰 포함)
-                await chrome.storage.local.set({
+                const storageData = {
                     userID: data.userID || message.userId,
                     access_token: data.access_token,
-                    refresh_token: data.refresh_token,
                     isLoggedIn: true,
                     loginTime: Date.now()
-                });
+                };
+                // refresh_token이 실제로 있을 때만 저장 (undefined로 덮어쓰기 방지)
+                if (data.refresh_token) {
+                    storageData.refresh_token = data.refresh_token;
+                } else {
+                    console.warn("[LOGIN] 백엔드가 refresh_token을 반환하지 않았습니다.");
+                    // 이전 세션의 만료된 refresh_token 제거
+                    await chrome.storage.local.remove('refresh_token');
+                }
+                await chrome.storage.local.set(storageData);
 
                 // 모든 ChatGPT 탭에 로그인 성공 메시지 전송
                 chrome.tabs.query({ url: ["https://chatgpt.com/*", "https://chat.openai.com/*"] }, (tabs) => {

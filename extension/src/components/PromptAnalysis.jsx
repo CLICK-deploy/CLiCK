@@ -4,7 +4,9 @@ const TAG_COLORS = {
     '모호/지시 불명확': '#7BEB75',  
     '구조/길이 중복': '#B7A3E3',  
     '문체/스타일 개선': '#C2E2FA', 
-    '오타/맞춤법': '#FF8F8F',     
+    '오타/맞춤법': '#FF8F8F',
+    'perfect!': '#9E9E9E',
+    'no change': '#9E9E9E',
 };
 
 export default function PromptAnalysis({ source, result, onClose, onApplyAll, panelStyle, onAnalyze, loading }) {
@@ -35,6 +37,15 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
 
         return () => observer.disconnect();
     }, []);
+
+    // 패치가 없는 표시 전용 태그 (e.g. "no change")
+    const displayOnlyTags = useMemo(() => {
+        if (!result?.tags) return [];
+        const patchTags = new Set(
+            Object.keys(result?.patches || {})
+        );
+        return result.tags.filter(t => !patchTags.has(t));
+    }, [result]);
 
     // source 순서대로 정렬된 패치 목록
     const allPatches = useMemo(() => {
@@ -140,6 +151,30 @@ export default function PromptAnalysis({ source, result, onClose, onApplyAll, pa
 
             <div className='panel-footer' style={fallbackStyle}> 
                 <div className="tag-bar">
+                    {/* 패치 없는 표시 전용 태그 */}
+                    {displayOnlyTags.map(tag => (
+                        <span
+                            key={tag}
+                            className="tag"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 12px',
+                                borderRadius: '20px',
+                                background: panelDetailStyle.background,
+                                color: TAG_COLORS[tag] ?? panelDetailStyle.color,
+                                borderColor: panelDetailStyle.borderColor,
+                                '--tw-shadow': panelDetailStyle['--tw-shadow'],
+                                boxShadow: panelDetailStyle.boxShadow,
+                                opacity: 0.7,
+                            }}
+                        >
+                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: TAG_COLORS[tag] ?? '#9E9E9E', display: 'inline-block', flexShrink: 0 }} />
+                            {tag}
+                        </span>
+                    ))}
+                    {/* 클릭 가능한 패치 태그 */}
                     {allPatches.map(({ key, tag, patch }) => {
                         const isActive = enabledPatchKeys.includes(key);
                         const label = tag;

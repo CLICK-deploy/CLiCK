@@ -16,6 +16,20 @@ export default function PromptInput() {
     const [textarea, setTextarea] = useState(null);
     const [liveText, setLiveText] = useState('');
     const [panelSize, setPanelSize] = useState({});
+    const [sessionExpiredMsg, setSessionExpiredMsg] = useState(false);
+
+    // 세션 만료 감지
+    useEffect(() => {
+        const handler = (message) => {
+            if (message.type === 'SESSION_EXPIRED') {
+                setPanelVisible(false);
+                setAnalysis(null);
+                setSessionExpiredMsg(true);
+            }
+        };
+        chrome.runtime.onMessage.addListener(handler);
+        return () => chrome.runtime.onMessage.removeListener(handler);
+    }, []);
 
     // 현재 채팅방 ID 찾기
     const findCurrentChatId = () => {
@@ -167,6 +181,49 @@ export default function PromptInput() {
         return () => window.removeEventListener('resize', syncPanelSize);
     }, [isPanelVisible, textarea]);
 
+    // ChatGPT 전송 감지 → trace_input 자동 전송
+    useEffect(() => {
+        if (!textarea) return;
+
+        let lastSendButton = null;
+
+        const sendTrace = () => {
+            const prompt = getTextareaValue(textarea);
+            const chatID = findCurrentChatId();
+            // 새 채팅(chatID 없음)이거나 빈 입력이면 skip
+            if (!prompt || !chatID) return;
+            chrome.runtime.sendMessage({ type: "TRACE_INPUT", chatID, prompt });
+        };
+
+        // Enter 키로 전송할 때 (Shift+Enter는 줄바꿈이므로 제외)
+        const handleKeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                sendTrace();
+            }
+        };
+        textarea.addEventListener('keydown', handleKeydown, true);
+
+        // 전송 버튼 클릭 감지 (ChatGPT가 버튼을 동적으로 교체하므로 MutationObserver 사용)
+        const attachSendButton = () => {
+            const btn = document.querySelector('button[data-testid="send-button"]');
+            if (btn && btn !== lastSendButton) {
+                lastSendButton?.removeEventListener('click', sendTrace, true);
+                btn.addEventListener('click', sendTrace, true);
+                lastSendButton = btn;
+            }
+        };
+
+        const observer = new MutationObserver(attachSendButton);
+        observer.observe(document.body, { childList: true, subtree: true });
+        attachSendButton();
+
+        return () => {
+            textarea.removeEventListener('keydown', handleKeydown, true);
+            observer.disconnect();
+            lastSendButton?.removeEventListener('click', sendTrace, true);
+        };
+    }, [textarea]);
+
     // 분석하기 버튼 클릭 시
     // TODO: 백엔드 연동
     const handleAnalyze = async () => {
@@ -211,7 +268,20 @@ export default function PromptInput() {
             });
             console.log('loading complete');
 
-            setAnalysis({ source: getTextareaValue(textarea), result: response });
+            const promptText = getTextareaValue(textarea);
+            // 태그가 없으면 "perfect" 결과로 정규화
+            let finalResult = response;
+            if (!response.tags || response.tags.length === 0) {
+                finalResult = {
+                    tags: ["perfect!"],
+                    patches: {
+                        "perfect!": [{ from: promptText, to: promptText }]
+                    },
+                    original_text: promptText,
+                    full_suggestion: promptText
+                };
+            }
+            setAnalysis({ source: promptText, result: finalResult });
         } catch (err) {
             setAnalysis({ 
                 source: "아 치킨먹고싶다~ 안되나?",
@@ -242,6 +312,24 @@ export default function PromptInput() {
     // TODO: CSS 분리
     return (
         <>
+            {/* 세션 만료 알림 */}
+            {sessionExpiredMsg && (
+                <div
+                    style={{
+                        position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+                        zIndex: 99999, background: '#333', color: '#fff',
+                        padding: '12px 20px', borderRadius: '8px',
+                        fontSize: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                    }}
+                >
+                    <span>세션이 만료되어 자동 로그아웃되었습니다.</span>
+                    <button
+                        onClick={() => setSessionExpiredMsg(false)}
+                        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}
+                    >×</button>
+                </div>
+            )}
             {/* 분석 패널 열기 버튼 */}
             <button
                 type="button"
