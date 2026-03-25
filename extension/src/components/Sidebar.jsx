@@ -11,10 +11,24 @@ const TEMPLATES = [
 export default function Sidebar() {
     const [recommendedPrompts, setRecommendedPrompts] = useState([]);
     const [submitCount, setSubmitCount] = useState(0);
+    const [currentPath, setCurrentPath] = useState(window.location.pathname);
     // 추천 프롬프트 클릭 후 수정 없이 제출했는지 추적
     const lastAppliedRecommendationRef = useRef(null); // { id, content }
     // 중복 제출 방지 (keydown + click 이중 발생)
     const lastSubmitTimeRef = useRef(0);
+
+    // URL 변경 감지 (ChatGPT SPA 대응) — 채팅방 이동 시 추천 목록 초기화 후 재요청
+    useEffect(() => {
+        const checkPath = () => {
+            const newPath = window.location.pathname;
+            if (newPath !== currentPath) {
+                setCurrentPath(newPath);
+                setRecommendedPrompts([]);
+            }
+        };
+        const interval = setInterval(checkPath, 500);
+        return () => clearInterval(interval);
+    }, [currentPath]);
 
     // 세션 만료 감지 → 사이드바 초기화 (알림은 PromptInput에서 표시)
     useEffect(() => {
@@ -61,33 +75,33 @@ export default function Sidebar() {
     useEffect(() => {
         const fetchPrompts = async () => {
             try {
+                // chatID가 null이면 새 채팅 → global 추천, 있으면 해당 채팅방 추천
                 const chatID = findCurrentChatId();
-                console.log('[Sidebar] chatID:', chatID);
-                if (!chatID) {
-                    console.log('[Sidebar] chatID 없음 -> 추천 프롬프트 요청 생략');
-                    return;
-                }
+                console.log('[Sidebar] chatID:', chatID, '(', chatID ? '기존 채팅' : '새 채팅 → global', ')');
 
-                // background.js로 요청 위임
+                // background.js로 요청 위임 (chatID가 null이어도 전송)
                 const response = await new Promise((resolve, reject) => {
                     chrome.runtime.sendMessage(
                         { type: "FETCH_RECOMMENDED_PROMPTS", chatID },
-                        (res) => res && res.error ? reject(res.error) : resolve(res)
+                        (res) => {
+                            if (chrome.runtime.lastError) { resolve({}); return; }
+                            res && res.error ? reject(res.error) : resolve(res ?? {});
+                        }
                     );
                 });
 
                 console.log('[Sidebar] 백엔드 응답:', response);
 
-                // 응답이 { chatID: { title, content } } 단일 객체이거나 배열일 수 있음
+                // chatID가 있으면 해당 키, 없으면 'global' 키에서 추천 목록 추출
                 let rawData = [];
                 if (Array.isArray(response)) {
                     rawData = response;
                 } else if (response && typeof response === 'object') {
-                    const candidates = response[chatID] || response.global || [];
+                    const key = chatID || 'global';
+                    const candidates = response[key] || [];
                     if (Array.isArray(candidates)) {
                         rawData = candidates;
                     } else if (candidates && typeof candidates === 'object' && Object.keys(candidates).length > 0) {
-                        // 백엔드가 단일 객체 { title, content } 로 반환하는 경우
                         rawData = [candidates];
                     }
                 }
@@ -98,7 +112,7 @@ export default function Sidebar() {
                     id: item.id ?? `${Date.now()}-${index}`
                 }));
 
-                // 기존 목록에 새 항목 추가 후 MAX_PROMPTS 초과분은 오래된 것부터 제거
+                // 동일 채팅 내 제출 시에는 누적, 채팅방 변경 시에는 이미 초기화됨
                 setRecommendedPrompts(prev => [...prev, ...formattedData].slice(-MAX_PROMPTS));
             } catch (error) {
                 console.error('[Sidebar] 프롬프트 로딩 에러:', error);
@@ -106,7 +120,7 @@ export default function Sidebar() {
         };
 
         fetchPrompts();
-    }, [submitCount]); 
+    }, [submitCount, currentPath]); 
 
     // 버튼 클릭 및 엔터 키 감지 
     useEffect(() => {
@@ -126,15 +140,20 @@ export default function Sidebar() {
             // 제출 후 초기화
             lastAppliedRecommendationRef.current = null;
 
-            // 현재 입력 내용을 백엔드에 저장 (이후 추천의 근거 데이터)
+            // 현재 입력 내용을 백엔드에 저장 → 완료 후 추천 요청 (순서 보장)
             try {
                 const chatID = findCurrentChatId();
                 if (chatID) {
-                    chrome.runtime.sendMessage({
-                        type: "TRACE_INPUT",
-                        chatID,
-                        prompt: promptText,
-                        ...(usedRecommendedId && { recommendedPromptId: usedRecommendedId }),
+                    await new Promise((resolve) => {
+                        chrome.runtime.sendMessage(
+                            {
+                                type: "TRACE_INPUT",
+                                chatID,
+                                prompt: promptText,
+                                ...(usedRecommendedId && { recommendedPromptId: usedRecommendedId }),
+                            },
+                            resolve
+                        );
                     });
                 }
             } catch (e) {
