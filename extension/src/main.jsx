@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import Sidebar from './components/Sidebar';
 import PromptInput from './components/PromptInput';
 import Settings from './components/Settings';
+import SurveyModal from './components/SurveyModal';
 import './App.css'; 
 
 /*
@@ -92,12 +93,25 @@ function injectAnalysisContainer() {
     }
 }
 
-// 폼/버튼이 사라졌을 때 자동 복구를 위한 폴백 인터벌
+// 폰/버튼이 사라졌을 때 자동 복구를 위한 폴백 인터벌
 let clickUiInterval = null;
 function ensureUiInjected() {
     injectSidebar();
     injectPromptTools();
     injectSettings();
+    injectSurvey();
+}
+
+function injectSurvey() {
+    if (document.querySelector('#click-survey-root')) return;
+    const root = document.createElement('div');
+    root.id = 'click-survey-root';
+    document.body.appendChild(root);
+    ReactDOM.createRoot(root).render(
+        <React.StrictMode>
+            <SurveyModal />
+        </React.StrictMode>
+    );
 }
 
 // 초기 실행 - UI 주입

@@ -257,3 +257,115 @@ click-analyze-button, .click-analyze-button h3 {
     padding-left: calc(var(--spacing, .25rem) * 4);
     padding-right: calc(var(--spacing, .25rem) * 4);
 }
+
+/* 만족도 조사 모달 */
+.click-survey-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: clickFadeIn 0.2s ease-out;
+}
+
+@keyframes clickFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.click-survey-modal {
+    position: relative;
+    background: var(--main-surface-primary, #2f2f2f);
+    border-radius: 16px;
+    padding: 28px 32px 24px;
+    width: 320px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-primary, #ececf1);
+    font-family: var(--font-sans, Inter, 'Noto Sans KR', Arial, sans-serif);
+    animation: clickSlideUp 0.2s ease-out;
+}
+
+@keyframes clickSlideUp {
+    from { transform: translateY(12px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.click-survey-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.45;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+.click-survey-close:hover { opacity: 0.9; }
+
+.click-survey-title {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.click-survey-sub {
+    margin: 0 0 20px;
+    font-size: 0.82rem;
+    opacity: 0.55;
+}
+
+.click-survey-stars {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+.click-survey-star {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    color: rgba(200, 200, 200, 0.4);
+    line-height: 0;
+}
+.click-survey-star:hover { transform: scale(1.15); }
+
+.click-survey-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    opacity: 0.45;
+    margin-bottom: 20px;
+    padding: 0 4px;
+}
+
+.click-survey-submit {
+    width: 100%;
+    padding: 10px 0;
+    border-radius: 8px;
+    border: none;
+    background: #19c37d;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    font-family: inherit;
+}
+.click-survey-submit:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+.click-survey-submit:not(:disabled):hover { opacity: 0.85; }
+
+.click-survey-thanks {
+    padding: 12px 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+}

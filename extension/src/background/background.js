@@ -579,4 +579,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true;
     }
+
+    // 만족도 조사 제출
+    if (message.type === "SUBMIT_SURVEY") {
+        (async () => {
+            try {
+                const { access_token, userID } = await chrome.storage.local.get(['access_token', 'userID']);
+                if (!access_token) { sendResponse({ skipped: true }); return; }
+
+                const response = await fetchWithAuth(
+                    `${API_BASE_URL}/api/survey`,
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            userID,
+                            rating: message.rating,
+                        }),
+                    }
+                );
+                const data = await response.json();
+                sendResponse({ success: response.ok, data });
+            } catch (error) {
+                console.error("만족도 제출 실패:", error);
+                sendResponse({ success: false, error: error.message });
+            }
+        })();
+        return true;
+    }
 });
