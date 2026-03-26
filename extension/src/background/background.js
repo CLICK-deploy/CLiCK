@@ -263,7 +263,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     {
                         method: "POST",
                         body: JSON.stringify({ 
-                            chatID: message.chatID 
+                            chatID: message.chatID,
+                            generate: message.generate !== false,  // 명시적으로 false일 때만 DB 조회
                         }),
                     }
                 );

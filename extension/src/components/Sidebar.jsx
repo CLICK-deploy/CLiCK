@@ -10,79 +10,105 @@ const TEMPLATES = [
 
 export default function Sidebar() {
     const [recommendedPrompts, setRecommendedPrompts] = useState([]);
-    const [submitCount, setSubmitCount] = useState(0);
     const [currentPath, setCurrentPath] = useState(window.location.pathname);
-    // 추천 프롬프트 클릭 후 수정 없이 제출했는지 추적
+    // fetchTrigger가 바뀔 때만 추천을 가져옴 — fetchParamsRef에 chatID와 generate를 먼저 세팅
+    const [fetchTrigger, setFetchTrigger] = useState(0);
+    const fetchParamsRef = useRef({ chatID: null, generate: false });
+
     const lastAppliedRecommendationRef = useRef(null); // { id, content }
-    // 중복 제출 방지 (keydown + click 이중 발생)
     const lastSubmitTimeRef = useRef(0);
+    // [경우 1] 새 채팅에서 제출 시 저장: URL 변경 감지 후 trace + fetch 처리
+    const pendingNewChatTraceRef = useRef(null); // { promptText, usedRecommendedId }
 
-    // URL 변경 감지 (ChatGPT SPA 대응) — 채팅방 이동 시 추천 목록 초기화 후 재요청
+    // URL에서 chatID 추출 헬퍼
+    const extractChatId = (path) => {
+        const match = path.match(/\/c\/([0-9a-f-]+)/i);
+        return match ? `/c/${match[1]}` : null;
+    };
+    const findCurrentChatId = () => extractChatId(window.location.pathname);
+
+    // trace_input 전송 헬퍼 (await 가능)
+    const sendTraceInput = (chatID, promptText, usedRecommendedId) =>
+        new Promise((resolve) => {
+            chrome.runtime.sendMessage(
+                {
+                    type: "TRACE_INPUT",
+                    chatID: chatID ?? "",
+                    prompt: promptText,
+                    ...(usedRecommendedId && { recommendedPromptId: usedRecommendedId }),
+                },
+                resolve
+            );
+        });
+
+    // 추천 fetch 명시적 트리거
+    // generate=true: LLM 호출 (경우 1, 2), generate=false: DB 캐시만 조회 (경우 3, 4, 초기 마운트)
+    const triggerFetch = (chatID, generate) => {
+        fetchParamsRef.current = { chatID, generate };
+        setFetchTrigger(n => n + 1);
+    };
+
+    // 최초 마운트: 현재 채팅방 기준 추천 로드 (DB 캐시만)
     useEffect(() => {
-        const checkPath = () => {
-            const newPath = window.location.pathname;
-            if (newPath !== currentPath) {
-                setCurrentPath(newPath);
-                setRecommendedPrompts([]);
-            }
-        };
-        const interval = setInterval(checkPath, 500);
-        return () => clearInterval(interval);
-    }, [currentPath]);
+        triggerFetch(findCurrentChatId(), false);
+    }, []);
 
-    // 세션 만료 감지 → 사이드바 초기화 (알림은 PromptInput에서 표시)
+    // 세션 만료 감지
     useEffect(() => {
         const handler = (message) => {
-            if (message.type === 'SESSION_EXPIRED') {
-                setRecommendedPrompts([]);
-            }
+            if (message.type === 'SESSION_EXPIRED') setRecommendedPrompts([]);
         };
         chrome.runtime.onMessage.addListener(handler);
         return () => chrome.runtime.onMessage.removeListener(handler);
     }, []);
 
-    // 로그인된 사용자 ID 가져오기
-    const getUserID = async () => {
-        try {
-            const response = await new Promise((resolve) => {
-                chrome.runtime.sendMessage(
-                    { type: "CHECK_LOGIN" }, 
-                    resolve
-                );
-            });
-            
-            if (response.isLoggedIn && response.userID) {
-                return response.userID;
-            } else {
-                return null;
-            }
-        } catch (error) {
-            console.error('사용자 ID 가져오기 실패:', error);
-            return null;
-        }
-    };
-
-    // 현재 채팅방 ID 찾기 (URL에서 직접 읽기)
-    // 일반 채팅: /c/{id}
-    // 프로젝트 채팅: /g/{gpt-id}/c/{id}
-    const findCurrentChatId = () => {
-        const path = window.location.pathname;
-        const match = path.match(/\/c\/([0-9a-f-]+)/i);
-        return match ? `/c/${match[1]}` : null;
-    };
-
-    // 백엔드에서 프롬프트 가져옴
+    // URL 변경 감지 — [경우 1] [경우 3] [경우 4] 처리
     useEffect(() => {
-        const fetchPrompts = async () => {
-            try {
-                // chatID가 null이면 새 채팅 → global 추천, 있으면 해당 채팅방 추천
-                const chatID = findCurrentChatId();
-                console.log('[Sidebar] chatID:', chatID, '(', chatID ? '기존 채팅' : '새 채팅 → global', ')');
+        const checkPath = () => {
+            const newPath = window.location.pathname;
+            if (newPath === currentPath) return;
 
-                // background.js로 요청 위임 (chatID가 null이어도 전송)
+            const newChatId = extractChatId(newPath);
+            setCurrentPath(newPath);
+            setRecommendedPrompts([]);
+
+            if (pendingNewChatTraceRef.current && newChatId) {
+                // [경우 1] 새 채팅에서 프롬프트 제출 → ChatGPT가 새 chatID URL로 이동
+                // 저장해 둔 프롬프트로 trace_input 완료 후 해당 chatID 기준 추천 요청
+                const { promptText, usedRecommendedId } = pendingNewChatTraceRef.current;
+                pendingNewChatTraceRef.current = null;
+                (async () => {
+                    try {
+                        await sendTraceInput(newChatId, promptText, usedRecommendedId);
+                    } catch (e) {
+                        console.error('[Sidebar] [경우1] trace_input 실패:', e);
+                    }
+                    triggerFetch(newChatId, true);  // [경우 1] LLM 호출
+                })();
+            } else {
+                // [경우 3] 기존 채팅 → 다른 기존 채팅: DB 캐시만 조회
+                // [경우 4] 기존 채팅 → 새 채팅 페이지: newChatId=null → global DB 캐시
+                pendingNewChatTraceRef.current = null;
+                triggerFetch(newChatId, false);  // [경우 3, 4] DB만
+            }
+        };
+
+        const interval = setInterval(checkPath, 500);
+        return () => clearInterval(interval);
+    }, [currentPath]);
+
+    // 추천 프롬프트 가져오기 — fetchTrigger 변화 시에만 실행
+    useEffect(() => {
+        if (fetchTrigger === 0) return;
+
+        const fetchPrompts = async () => {
+            const { chatID, generate } = fetchParamsRef.current;
+            try {
+                console.log('[Sidebar] 추천 요청:', chatID ?? '(global)', generate ? '[LLM]' : '[DB캐시]');
+
                 const response = await new Promise((resolve, reject) => {
                     chrome.runtime.sendMessage(
-                        { type: "FETCH_RECOMMENDED_PROMPTS", chatID },
+                        { type: "FETCH_RECOMMENDED_PROMPTS", chatID, generate },
                         (res) => {
                             if (chrome.runtime.lastError) { resolve({}); return; }
                             res && res.error ? reject(res.error) : resolve(res ?? {});
@@ -92,7 +118,6 @@ export default function Sidebar() {
 
                 console.log('[Sidebar] 백엔드 응답:', response);
 
-                // chatID가 있으면 해당 키, 없으면 'global' 키에서 추천 목록 추출
                 let rawData = [];
                 if (Array.isArray(response)) {
                     rawData = response;
@@ -112,7 +137,6 @@ export default function Sidebar() {
                     id: item.id ?? `${Date.now()}-${index}`
                 }));
 
-                // 동일 채팅 내 제출 시에는 누적, 채팅방 변경 시에는 이미 초기화됨
                 setRecommendedPrompts(prev => [...prev, ...formattedData].slice(-MAX_PROMPTS));
             } catch (error) {
                 console.error('[Sidebar] 프롬프트 로딩 에러:', error);
@@ -120,71 +144,51 @@ export default function Sidebar() {
         };
 
         fetchPrompts();
-    }, [submitCount, currentPath]); 
+    }, [fetchTrigger]);
 
-    // 버튼 클릭 및 엔터 키 감지 
+    // 버튼 클릭 및 엔터 키 감지
     useEffect(() => {
         const triggerSubmit = async (promptText) => {
             const now = Date.now();
             if (now - lastSubmitTimeRef.current < 500) return;
             lastSubmitTimeRef.current = now;
-
             if (!promptText) return;
-            console.log("메시지 제출 감지됨! -> 프롬프트 갱신 요청");
 
-            // 추천 프롬프트가 수정 없이 그대로 제출됐는지 확인
             const applied = lastAppliedRecommendationRef.current;
-            const usedRecommendedId = (applied && applied.content === promptText)
-                ? applied.id
-                : null;
-            // 제출 후 초기화
+            const usedRecommendedId = (applied && applied.content === promptText) ? applied.id : null;
             lastAppliedRecommendationRef.current = null;
 
-            // 현재 입력 내용을 백엔드에 저장 → 완료 후 추천 요청 (순서 보장)
-            try {
-                const chatID = findCurrentChatId();
-                if (chatID) {
-                    await new Promise((resolve) => {
-                        chrome.runtime.sendMessage(
-                            {
-                                type: "TRACE_INPUT",
-                                chatID,
-                                prompt: promptText,
-                                ...(usedRecommendedId && { recommendedPromptId: usedRecommendedId }),
-                            },
-                            resolve
-                        );
-                    });
-                }
-            } catch (e) {
-                console.error('[Sidebar] trace_input 전송 실패:', e);
-            }
+            const chatID = findCurrentChatId();
 
-            setSubmitCount(prev => prev + 1);
+            if (chatID) {
+                // [경우 2] 기존 채팅에서 제출 → trace 완료 후 동일 chatID로 추천
+                try {
+                    await sendTraceInput(chatID, promptText, usedRecommendedId);
+                } catch (e) {
+                    console.error('[Sidebar] [경우2] trace_input 실패:', e);
+                }
+                triggerFetch(chatID, true);  // [경우 2] LLM 호출
+            } else {
+                // [경우 1] 새 채팅에서 제출 → ChatGPT가 URL을 바꿀 때까지 대기
+                // URL 변경 감지 시 trace + fetch 실행 (pendingNewChatTraceRef 참조)
+                pendingNewChatTraceRef.current = { promptText, usedRecommendedId };
+            }
         };
 
-        // 클릭 이벤트 핸들러 (이벤트 위임)
         const handleGlobalClick = (e) => {
             const submitBtn = e.target.closest('#composer-submit-button');
             if (submitBtn && !submitBtn.disabled) {
                 const textarea = document.querySelector('#prompt-textarea');
-                const text = textarea?.innerText.trim() || '';
-                triggerSubmit(text);
+                triggerSubmit(textarea?.innerText.trim() || '');
             }
         };
 
-        // 엔터키 핸들러 — keydown을 사용해야 ChatGPT가 textarea를 비우기 전에 캡처 가능
         const handleKeyDown = (e) => {
             if (e.target.id === 'prompt-textarea' && e.key === 'Enter' && !e.shiftKey) {
-                const text = e.target.innerText.trim();
-                triggerSubmit(text);
+                triggerSubmit(e.target.innerText.trim());
             }
         };
 
-        document.addEventListener('click', handleGlobalClick, true);
-        document.addEventListener('keydown', handleKeyDown, true);
-
-        // textarea 직접 수정 시 추천 프롬프트 추적 초기화
         const handleTextareaInput = (e) => {
             if (e.target.id !== 'prompt-textarea') return;
             const applied = lastAppliedRecommendationRef.current;
@@ -192,6 +196,9 @@ export default function Sidebar() {
                 lastAppliedRecommendationRef.current = null;
             }
         };
+
+        document.addEventListener('click', handleGlobalClick, true);
+        document.addEventListener('keydown', handleKeyDown, true);
         document.addEventListener('input', handleTextareaInput, true);
 
         return () => {

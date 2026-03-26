@@ -181,24 +181,17 @@ export default function PromptInput() {
         return () => window.removeEventListener('resize', syncPanelSize);
     }, [isPanelVisible, textarea]);
 
-    // ChatGPT 전송 감지 → trace_input 자동 전송
+    // ChatGPT 전송 감지 → 패널이 열려 있을 때 실시간 텍스트 동기화 (TRACE_INPUT은 Sidebar에서 처리)
     useEffect(() => {
         if (!textarea) return;
 
         let lastSendButton = null;
 
-        const sendTrace = () => {
-            const prompt = getTextareaValue(textarea);
-            const chatID = findCurrentChatId();
-            // 새 채팅(chatID 없음)이거나 빈 입력이면 skip
-            if (!prompt || !chatID) return;
-            chrome.runtime.sendMessage({ type: "TRACE_INPUT", chatID, prompt });
-        };
-
         // Enter 키로 전송할 때 (Shift+Enter는 줄바꿈이므로 제외)
         const handleKeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-                sendTrace();
+                // 패널이 열려있으면 입력값 동기화
+                if (isPanelVisible) setLiveText(getTextareaValue(textarea));
             }
         };
         textarea.addEventListener('keydown', handleKeydown, true);
@@ -207,8 +200,6 @@ export default function PromptInput() {
         const attachSendButton = () => {
             const btn = document.querySelector('button[data-testid="send-button"]');
             if (btn && btn !== lastSendButton) {
-                lastSendButton?.removeEventListener('click', sendTrace, true);
-                btn.addEventListener('click', sendTrace, true);
                 lastSendButton = btn;
             }
         };
@@ -220,7 +211,6 @@ export default function PromptInput() {
         return () => {
             textarea.removeEventListener('keydown', handleKeydown, true);
             observer.disconnect();
-            lastSendButton?.removeEventListener('click', sendTrace, true);
         };
     }, [textarea]);
 
