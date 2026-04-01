@@ -56,6 +56,72 @@ document.addEventListener("DOMContentLoaded", async function () {
     userID = data.userID || null;
   } catch (e) {}
 
+  // ─── 사용량 요약 섹션 로드 ───────────────────────────────────────────────
+
+  const PLAN_DISPLAY = { free: "Free", naive: "Naive", pro: "Pro" };
+
+  function renderUsageInfo(info) {
+    const amountEl   = document.getElementById("usage-amount");
+    const barEl      = document.getElementById("usage-bar");
+    const planNameEl = document.getElementById("usage-plan-name");
+    const expiryEl   = document.getElementById("usage-expiry");
+    if (!amountEl) return;
+
+    const planLabel = PLAN_DISPLAY[info.plan] || info.plan;
+    planNameEl.textContent = `현재 ${planLabel} 플랜을 사용 중입니다`;
+
+    if (info.credits_total != null && info.credits_total > 0) {
+      const used  = Number(info.credits_used  || 0).toLocaleString("ko-KR");
+      const total = Number(info.credits_total).toLocaleString("ko-KR");
+      amountEl.textContent = `${used} 크레딧 / ${total} 크레딧`;
+      const pct = Math.min(100, Math.round(((info.credits_used || 0) / info.credits_total) * 100));
+      barEl.style.width = `${pct}%`;
+    } else if (info.plan === "pro") {
+      amountEl.textContent = "무제한";
+      barEl.style.width = "100%";
+    } else {
+      amountEl.textContent = "–";
+      barEl.style.width = "0%";
+    }
+
+    if (info.expires_at) {
+      const d     = new Date(info.expires_at);
+      const month = d.getMonth() + 1;
+      const day   = d.getDate();
+      expiryEl.textContent = `${month}월 ${day}일에 취소됩니다`;
+    } else if (info.plan === "free") {
+      expiryEl.textContent = "무료 플랜 사용 중";
+    } else {
+      expiryEl.textContent = "";
+    }
+  }
+
+  (async () => {
+    try {
+      const storage = await chrome.storage.local.get(["access_token", "plan"]);
+      if (!storage.access_token) {
+        renderUsageInfo({ plan: storage.plan || "free", credits_used: 0, credits_total: null, expires_at: null });
+        return;
+      }
+      const response = await chrome.runtime.sendMessage({ type: "GET_USER_INFO" });
+      if (response && !response.error) {
+        renderUsageInfo(response);
+      } else {
+        renderUsageInfo({ plan: storage.plan || "free", credits_used: 0, credits_total: null, expires_at: null });
+      }
+    } catch (e) {
+      const storage = await chrome.storage.local.get(["plan"]);
+      renderUsageInfo({ plan: storage.plan || "free", credits_used: 0, credits_total: null, expires_at: null });
+    }
+  })();
+
+  // 구독 관리 버튼 — 현재 페이지가 구독 관리이므로 플랜 목록으로 스크롤
+  document.getElementById("manage-btn")?.addEventListener("click", () => {
+    document.querySelector(".plans-wrapper")?.scrollIntoView({ behavior: "smooth" });
+  });
+
+  // ────────────────────────────────────────────────────────────────────────
+
   planCards.forEach((card) => {
     const cardPlan = card.dataset.plan;
     const cardRank = PLAN_ORDER.indexOf(cardPlan);

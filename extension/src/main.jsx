@@ -40,7 +40,7 @@ function injectSidebar() {
 }
 
 function injectSettings() {
-    const container = document.querySelector('[class="flex items-center justify-end gap-2 overflow-x-hidden"]');
+    const container = document.querySelector('[class="flex items-center justify-end overflow-x-hidden"]');
     
     if (container && !document.querySelector('#click-settings-root')) {
         const settingsRoot = document.createElement('div');

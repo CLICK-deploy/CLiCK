@@ -580,6 +580,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
     }
 
+    // 사용자 구독/크레딧 정보 조회
+    if (message.type === "GET_USER_INFO") {
+        (async () => {
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/api/user/info`);
+                if (!response.ok) throw new Error(`Status: ${response.status}`);
+                const data = await response.json();
+                sendResponse(data);
+            } catch (error) {
+                console.error("사용자 정보 조회 실패:", error);
+                sendResponse({ error: error.message });
+            }
+        })();
+        return true;
+    }
+
     // 만족도 조사 제출
     if (message.type === "SUBMIT_SURVEY") {
         (async () => {

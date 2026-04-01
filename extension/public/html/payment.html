@@ -299,6 +299,99 @@
       transform: none;
     }
 
+    /* 사용량 요약 섹션 */
+    .usage-section {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .usage-card {
+      flex: 1;
+      background-color: var(--input-background);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .usage-label {
+      font-size: 11px;
+      color: var(--subtext-color);
+      font-weight: 500;
+    }
+
+    .usage-amount {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .usage-bar-bg {
+      height: 5px;
+      background-color: var(--border-color);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+
+    .usage-bar-fill {
+      height: 100%;
+      background-color: #19c37d;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .usage-plan-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .usage-expiry {
+      font-size: 11px;
+      color: var(--subtext-color);
+    }
+
+    .manage-btn {
+      margin-top: 6px;
+      padding: 4px 10px;
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--subtext-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      align-self: flex-end;
+      transition: all 0.2s;
+    }
+
+    .manage-btn:hover {
+      border-color: #19c37d;
+      color: #19c37d;
+    }
+
+    .usage-skeleton {
+      display: inline-block;
+      width: 80px;
+      height: 12px;
+      background: linear-gradient(90deg, var(--border-color) 25%, var(--background-color) 50%, var(--border-color) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
     /* 하단 안내 */
     .footer-note {
       text-align: center;
@@ -384,6 +477,24 @@
 
       <p class="page-title">요금제 선택</p>
       <p class="page-subtitle">사용 목적에 맞는 플랜을 선택해주세요.</p>
+
+      <!-- 사용량 요약 섹션 -->
+      <div class="usage-section" id="usage-section">
+        <div class="usage-card">
+          <div class="usage-label">사용된 크레딧</div>
+          <div class="usage-amount" id="usage-amount"><span class="usage-skeleton"></span></div>
+          <div class="usage-bar-bg">
+            <div class="usage-bar-fill" id="usage-bar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="usage-card">
+          <div class="usage-plan-name" id="usage-plan-name"><span class="usage-skeleton"></span></div>
+          <div class="usage-expiry" id="usage-expiry"><span class="usage-skeleton"></span></div>
+          <button type="button" class="manage-btn" id="manage-btn">
+            ⚙ 구독 관리
+          </button>
+        </div>
+      </div>
 
       <div class="plans-wrapper">
         <!-- Free 플랜 -->
