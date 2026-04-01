@@ -67,8 +67,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     const expiryEl   = document.getElementById("usage-expiry");
     if (!amountEl) return;
 
-    const planLabel = PLAN_DISPLAY[info.plan] || info.plan;
-    planNameEl.textContent = `현재 ${planLabel} 플랜을 사용 중입니다`;
+    if (info.expires_at) {
+      const daysLeft = Math.ceil((new Date(info.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
+      planNameEl.textContent = daysLeft > 0 ? `${daysLeft}일 남음` : "만료됨";
+    } else if (info.plan === "free") {
+      planNameEl.textContent = "–";
+    } else {
+      planNameEl.textContent = "–";
+    }
 
     if (info.credits_total != null && info.credits_total > 0) {
       const used  = Number(info.credits_used  || 0).toLocaleString("ko-KR");
@@ -115,11 +121,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   })();
 
-  // 구독 관리 버튼 — 현재 페이지가 구독 관리이므로 플랜 목록으로 스크롤
-  document.getElementById("manage-btn")?.addEventListener("click", () => {
-    document.querySelector(".plans-wrapper")?.scrollIntoView({ behavior: "smooth" });
-  });
-
   // ────────────────────────────────────────────────────────────────────────
 
   planCards.forEach((card) => {
@@ -134,6 +135,25 @@ document.addEventListener("DOMContentLoaded", async function () {
       badge.className = "current-plan-badge";
       badge.textContent = "현재 플랜";
       card.prepend(badge);
+
+      // 유료 플랜이면 구독 취소 버튼 삽입
+      if (currentPlan !== "free") {
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "manage-btn";
+        cancelBtn.textContent = "✕ 구독 취소";
+        cancelBtn.addEventListener("click", () => {
+          if (!confirm("구독을 취소하시겠습니까? 취소 후 현재 기간 만료 시 Free 플랜으로 전환됩니다.")) return;
+          chrome.runtime.sendMessage({ type: "CANCEL_SUBSCRIPTION" }, (res) => {
+            if (res && res.success) {
+              showAlert("구독이 취소되었습니다. 현재 기간 만료 후 Free 플랜으로 전환됩니다.");
+            } else {
+              showAlert(res?.error || "구독 취소에 실패했습니다. 다시 시도해주세요.");
+            }
+          });
+        });
+        card.querySelector(".plan-header").insertAdjacentElement("afterend", cancelBtn);
+      }
     } else if (cardRank < currentRank) {
       // 현재보다 낮은 플랜 비활성화
       card.classList.add("lower-plan");

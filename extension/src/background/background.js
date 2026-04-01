@@ -37,6 +37,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
                     orderId,
                     amount,
                     userID: pending.userID,
+                    plan: pending.plan,
                 }),
             });
 
@@ -578,6 +579,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         })();
 
     return true;
+    }
+
+    // 구독 취소
+    if (message.type === "CANCEL_SUBSCRIPTION") {
+        (async () => {
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/api/payment/cancel`, { method: "POST" });
+                if (!response.ok) throw new Error(`Status: ${response.status}`);
+                await chrome.storage.local.set({ plan: "free" });
+                sendResponse({ success: true });
+            } catch (error) {
+                console.error("구독 취소 실패:", error);
+                sendResponse({ success: false, error: error.message });
+            }
+        })();
+        return true;
     }
 
     // 사용자 구독/크레딧 정보 조회

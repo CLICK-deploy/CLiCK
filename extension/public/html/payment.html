@@ -367,7 +367,7 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      align-self: flex-end;
+      width: fit-content;
       transition: all 0.2s;
     }
 
@@ -488,11 +488,9 @@
           </div>
         </div>
         <div class="usage-card">
+          <div class="usage-label">구독 잔여일</div>
           <div class="usage-plan-name" id="usage-plan-name"><span class="usage-skeleton"></span></div>
           <div class="usage-expiry" id="usage-expiry"><span class="usage-skeleton"></span></div>
-          <button type="button" class="manage-btn" id="manage-btn">
-            ⚙ 구독 관리
-          </button>
         </div>
       </div>
 
