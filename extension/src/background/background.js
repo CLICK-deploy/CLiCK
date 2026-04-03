@@ -251,6 +251,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
+    // GPT 출력 기록
+    if (message.type === "TRACE_OUTPUT") {
+        (async () => {
+            try {
+                const { access_token } = await chrome.storage.local.get(['access_token']);
+                if (!access_token) { sendResponse({ skipped: true }); return; }
+
+                const response = await fetchWithAuth(
+                    `${API_BASE_URL}/api/trace_output`,
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            chatID: message.chatID,
+                            output: message.output,
+                        }),
+                    }
+                );
+                if (!response.ok) throw new Error(`trace_output failed: ${response.status}`);
+                const data = await response.json();
+                sendResponse(data);
+            } catch (error) {
+                console.error("trace_output 요청 실패:", error);
+                sendResponse({ error: error.message });
+            }
+        })();
+        return true;
+    }
+
     // 추천 프롬프트 목록 조회 요청
     if (message.type === "FETCH_RECOMMENDED_PROMPTS") {
         (async () => {
@@ -625,13 +653,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     {
                         method: "POST",
                         body: JSON.stringify({
-                            userID,
                             rating: message.rating,
                         }),
                     }
                 );
+                if (!response.ok) {
+                    sendResponse({ success: false, error: `Survey failed: ${response.status}` });
+                    return;
+                }
                 const data = await response.json();
-                sendResponse({ success: response.ok, data });
+                sendResponse({ success: true, data });
             } catch (error) {
                 console.error("만족도 제출 실패:", error);
                 sendResponse({ success: false, error: error.message });

@@ -41,6 +41,71 @@ export default function Sidebar() {
             );
         });
 
+    // GPT 응답 완료 감지 → trace_output 전송
+    useEffect(() => {
+        // 마지막 assistant 섹션의 .markdown innerText 추출
+        const getLastAssistantText = () => {
+            const sections = document.querySelectorAll('section[data-turn="assistant"]');
+            if (!sections.length) return null;
+            const last = sections[sections.length - 1];
+            const markdown = last.querySelector('div[data-message-author-role="assistant"] .markdown');
+            return markdown ? markdown.innerText.trim() : null;
+        };
+
+        let debounceTimer = null;
+        let isStreaming = false;
+        let capturedChatId = null;
+
+        const scheduleCapture = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                if (!isStreaming) return;
+                isStreaming = false;
+                const text = getLastAssistantText();
+                if (text) {
+                    console.log('[Sidebar] GPT 응답 감지, trace_output 전송:', { chatID: capturedChatId, text });
+                    // sendTraceOutput(capturedChatId, text).catch(() => {});
+                }
+            }, 1500);
+        };
+
+        // stop 버튼 등장 → 스트리밍 시작 감지
+        // stop 버튼 소멸 → 스트리밍 완료 감지 (+ debounce 폴백)
+        const streamObserver = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                // stop 버튼 추가됨 → 스트리밍 시작
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType !== 1) continue;
+                    if (
+                        node.matches?.('button[data-testid="stop-button"]') ||
+                        node.querySelector?.('button[data-testid="stop-button"]')
+                    ) {
+                        isStreaming = true;
+                        capturedChatId = findCurrentChatId();
+                    }
+                }
+                // stop 버튼 제거됨 → 스트리밍 완료
+                for (const node of mutation.removedNodes) {
+                    if (node.nodeType !== 1) continue;
+                    if (
+                        node.matches?.('button[data-testid="stop-button"]') ||
+                        node.querySelector?.('button[data-testid="stop-button"]')
+                    ) {
+                        scheduleCapture();
+                    }
+                }
+            }
+        });
+
+        streamObserver.observe(document.body, { childList: true, subtree: true });
+
+        return () => {
+            streamObserver.disconnect();
+            clearTimeout(debounceTimer);
+        };
+    }, []);
+
+
     // 추천 fetch 명시적 트리거
     // generate=true: LLM 호출 (경우 1, 2), generate=false: DB 캐시만 조회 (경우 3, 4, 초기 마운트)
     const triggerFetch = (chatID, generate) => {
