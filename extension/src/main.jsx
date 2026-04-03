@@ -94,7 +94,6 @@ function injectAnalysisContainer() {
 }
 
 // 폰/버튼이 사라졌을 때 자동 복구를 위한 폴백 인터벌
-let clickUiInterval = null;
 function ensureUiInjected() {
     injectSidebar();
     injectPromptTools();
@@ -117,34 +116,32 @@ function injectSurvey() {
 // 초기 실행 - UI 주입
 ensureUiInjected();
 
+// 4개 루트가 모두 주입됐는지 확인
+function allRootsInjected() {
+    return (
+        !!document.querySelector('#click-sidebar-root') &&
+        !!document.querySelector('#click-settings-root') &&
+        !!document.querySelector('#click-button-root') &&
+        !!document.querySelector('#click-survey-root')
+    );
+}
+
 // MutationObserver를 사용하여 ChatGPT의 동적 UI 로딩에 대응
+// throttle: 50ms마다 최대 1회 실행, 모두 주입 완료되면 disconnect
+let observerThrottleTimer = null;
 const observer = new MutationObserver(() => {
-    // Extension context가 무효화됐으면 즉시 정리
     if (!isExtensionContextValid()) {
         observer.disconnect();
-        if (clickUiInterval) {
-            clearInterval(clickUiInterval);
-            clickUiInterval = null;
-        }
         return;
     }
-
-    injectSidebar();
-    injectPromptTools();
-    injectSettings();
-
-    // 폴백 인터벌 시작(계속 감시)
-    if (!clickUiInterval) {
-        clickUiInterval = setInterval(() => {
-            if (!isExtensionContextValid()) {
-                clearInterval(clickUiInterval);
-                clickUiInterval = null;
-                observer.disconnect();
-                return;
-            }
-            ensureUiInjected();
-        }, 300);
-    }
+    if (observerThrottleTimer) return;
+    observerThrottleTimer = setTimeout(() => {
+        observerThrottleTimer = null;
+        ensureUiInjected();
+        if (allRootsInjected()) {
+            observer.disconnect();
+        }
+    }, 50);
 });
 
 observer.observe(document.body, {

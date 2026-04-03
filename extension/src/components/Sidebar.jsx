@@ -97,7 +97,10 @@ export default function Sidebar() {
             }
         });
 
-        streamObserver.observe(document.body, { childList: true, subtree: true });
+        // stop 버튼은 입력 폼 근처에만 등장 — 그 상위 컨테이너만 감시해서 범위 최소화
+        // 폼 컨테이너를 찾지 못하면 body로 폴백
+        const streamRoot = document.querySelector('main') ?? document.body;
+        streamObserver.observe(streamRoot, { childList: true, subtree: true });
 
         return () => {
             streamObserver.disconnect();
@@ -128,8 +131,9 @@ export default function Sidebar() {
     }, []);
 
     // URL 변경 감지 — [경우 1] [경우 3] [경우 4] 처리
+    // pushState/replaceState/popstate 인터셉트로 이벤트 기반 감지 (폴링 제거)
     useEffect(() => {
-        const checkPath = () => {
+        const handlePathChange = () => {
             const newPath = window.location.pathname;
             if (newPath === currentPath) return;
 
@@ -138,8 +142,6 @@ export default function Sidebar() {
             setRecommendedPrompts([]);
 
             if (pendingNewChatTraceRef.current && newChatId) {
-                // [경우 1] 새 채팅에서 프롬프트 제출 → ChatGPT가 새 chatID URL로 이동
-                // 저장해 둔 프롬프트로 trace_input 완료 후 해당 chatID 기준 추천 요청
                 const { promptText, usedRecommendedId } = pendingNewChatTraceRef.current;
                 pendingNewChatTraceRef.current = null;
                 (async () => {
@@ -148,18 +150,34 @@ export default function Sidebar() {
                     } catch (e) {
                         console.error('[Sidebar] [경우1] trace_input 실패:', e);
                     }
-                    triggerFetch(newChatId, true);  // [경우 1] LLM 호출
+                    triggerFetch(newChatId, true);
                 })();
             } else {
-                // [경우 3] 기존 채팅 → 다른 기존 채팅: DB 캐시만 조회
-                // [경우 4] 기존 채팅 → 새 채팅 페이지: newChatId=null → global DB 캐시
                 pendingNewChatTraceRef.current = null;
-                triggerFetch(newChatId, false);  // [경우 3, 4] DB만
+                triggerFetch(newChatId, false);
             }
         };
 
-        const interval = setInterval(checkPath, 500);
-        return () => clearInterval(interval);
+        // ChatGPT는 SPA이므로 history.pushState/replaceState를 직접 인터셉트
+        const _pushState = history.pushState.bind(history);
+        const _replaceState = history.replaceState.bind(history);
+
+        history.pushState = (...args) => {
+            _pushState(...args);
+            handlePathChange();
+        };
+        history.replaceState = (...args) => {
+            _replaceState(...args);
+            handlePathChange();
+        };
+
+        window.addEventListener('popstate', handlePathChange);
+
+        return () => {
+            history.pushState = _pushState;
+            history.replaceState = _replaceState;
+            window.removeEventListener('popstate', handlePathChange);
+        };
     }, [currentPath]);
 
     // 추천 프롬프트 가져오기 — fetchTrigger 변화 시에만 실행
