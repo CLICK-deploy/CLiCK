@@ -42,8 +42,9 @@ export default function Sidebar() {
         });
 
     // GPT 응답 완료 감지 → trace_output 전송
+    // MutationObserver 대신 300ms 폴링으로 stop 버튼 감지
+    // (subtree MutationObserver는 스트리밍 중 수천 번 발화해 메모리 폭증 유발)
     useEffect(() => {
-        // 마지막 assistant 섹션의 .markdown innerText 추출
         const getLastAssistantText = () => {
             const sections = document.querySelectorAll('section[data-turn="assistant"]');
             if (!sections.length) return null;
@@ -52,59 +53,41 @@ export default function Sidebar() {
             return markdown ? markdown.innerText.trim() : null;
         };
 
-        let debounceTimer = null;
-        let isStreaming = false;
+        let wasStreaming = false;
         let capturedChatId = null;
+        let captureTimer = null;
 
-        const scheduleCapture = () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                if (!isStreaming) return;
-                isStreaming = false;
-                const text = getLastAssistantText();
-                if (text) {
-                    console.log('[Sidebar] GPT 응답 감지, trace_output 전송:', { chatID: capturedChatId, text });
-                    // sendTraceOutput(capturedChatId, text).catch(() => {});
-                }
-            }, 1500);
+        const checkStreaming = () => {
+            const stopBtn =
+                document.querySelector('button[data-testid="stop-button"]') ??
+                document.querySelector('button[aria-label*="Stop"]');
+            const isNowStreaming = !!stopBtn;
+
+            if (isNowStreaming && !wasStreaming) {
+                // 스트리밍 시작
+                wasStreaming = true;
+                capturedChatId = findCurrentChatId();
+            } else if (!isNowStreaming && wasStreaming) {
+                // 스트리밍 완료
+                wasStreaming = false;
+                clearTimeout(captureTimer);
+                captureTimer = setTimeout(() => {
+                    const text = getLastAssistantText();
+                    if (text) {
+                        console.log('[CLiCK] ✅ GPT 응답 캡처 완료');
+                        console.log('[CLiCK] chatID:', capturedChatId);
+                        console.log('[CLiCK] output (앞 200자):', text.slice(0, 200));
+                        // sendTraceOutput(capturedChatId, text).catch(() => {});
+                    }
+                }, 500);
+            }
         };
 
-        // stop 버튼 등장 → 스트리밍 시작 감지
-        // stop 버튼 소멸 → 스트리밍 완료 감지 (+ debounce 폴백)
-        const streamObserver = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                // stop 버튼 추가됨 → 스트리밍 시작
-                for (const node of mutation.addedNodes) {
-                    if (node.nodeType !== 1) continue;
-                    if (
-                        node.matches?.('button[data-testid="stop-button"]') ||
-                        node.querySelector?.('button[data-testid="stop-button"]')
-                    ) {
-                        isStreaming = true;
-                        capturedChatId = findCurrentChatId();
-                    }
-                }
-                // stop 버튼 제거됨 → 스트리밍 완료
-                for (const node of mutation.removedNodes) {
-                    if (node.nodeType !== 1) continue;
-                    if (
-                        node.matches?.('button[data-testid="stop-button"]') ||
-                        node.querySelector?.('button[data-testid="stop-button"]')
-                    ) {
-                        scheduleCapture();
-                    }
-                }
-            }
-        });
-
-        // stop 버튼은 입력 폼 근처에만 등장 — 그 상위 컨테이너만 감시해서 범위 최소화
-        // 폼 컨테이너를 찾지 못하면 body로 폴백
-        const streamRoot = document.querySelector('main') ?? document.body;
-        streamObserver.observe(streamRoot, { childList: true, subtree: true });
+        const intervalId = setInterval(checkStreaming, 300);
 
         return () => {
-            streamObserver.disconnect();
-            clearTimeout(debounceTimer);
+            clearInterval(intervalId);
+            clearTimeout(captureTimer);
         };
     }, []);
 
