@@ -213,7 +213,7 @@ export default function Sidebar() {
                     id: item.id ?? `${Date.now()}-${index}`
                 }));
 
-                setRecommendedPrompts(prev => [...prev, ...formattedData].slice(-MAX_PROMPTS));
+                setRecommendedPrompts(prev => [...formattedData, ...prev].slice(0, MAX_PROMPTS));
             } catch (error) {
                 console.error('[Sidebar] 프롬프트 로딩 에러:', error);
             }
