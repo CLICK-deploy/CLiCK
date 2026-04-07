@@ -41,6 +41,15 @@ export default function Sidebar() {
             );
         });
 
+    // trace_output 전송 헬퍼 — io_history 행의 output 컬럼을 채움
+    const sendTraceOutput = (chatID, outputText) =>
+        new Promise((resolve) => {
+            chrome.runtime.sendMessage(
+                { type: "TRACE_OUTPUT", chatID: chatID ?? "", output: outputText },
+                resolve
+            );
+        });
+
     // GPT 응답 완료 감지 → trace_output 전송
     // MutationObserver 대신 300ms 폴링으로 stop 버튼 감지
     // (subtree MutationObserver는 스트리밍 중 수천 번 발화해 메모리 폭증 유발)
@@ -77,7 +86,8 @@ export default function Sidebar() {
                         console.log('[CLiCK] ✅ GPT 응답 캡처 완료');
                         console.log('[CLiCK] chatID:', capturedChatId);
                         console.log('[CLiCK] output (앞 200자):', text.slice(0, 200));
-                        // sendTraceOutput(capturedChatId, text).catch(() => {});
+                        const tail = text.slice(-150);
+                        sendTraceOutput(capturedChatId, tail).catch(() => {});
                     }
                 }, 500);
             }
