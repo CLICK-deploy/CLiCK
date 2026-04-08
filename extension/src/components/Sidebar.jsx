@@ -19,6 +19,8 @@ export default function Sidebar() {
     const lastSubmitTimeRef = useRef(0);
     // [경우 1] 새 채팅에서 제출 시 저장: URL 변경 감지 후 trace + fetch 처리
     const pendingNewChatTraceRef = useRef(null); // { promptText, usedRecommendedId }
+    // 마지막으로 캡처한 AI 응답 — recommend 요청 시 이전 턴의 answer로 주입
+    const lastCapturedOutputRef = useRef("");
 
     // URL에서 chatID 추출 헬퍼
     const extractChatId = (path) => {
@@ -55,16 +57,36 @@ export default function Sidebar() {
     // (subtree MutationObserver는 스트리밍 중 수천 번 발화해 메모리 폭증 유발)
     useEffect(() => {
         const getLastAssistantText = () => {
-            const sections = document.querySelectorAll('section[data-turn="assistant"]');
-            if (!sections.length) return null;
-            const last = sections[sections.length - 1];
-            const markdown = last.querySelector('div[data-message-author-role="assistant"] .markdown');
-            return markdown ? markdown.innerText.trim() : null;
+            const sections = document.getElementsByTagName('section');
+            for (let i = sections.length - 1; i >= 0; i--) {
+                if (sections[i].dataset.turn !== 'assistant') continue;
+                // 이미지는 .markdown 바깥 형제 요소로 렌더되므로 message 컨테이너 전체를 기준으로 확인
+                const msgContainer = sections[i].querySelector('div[data-message-author-role="assistant"]');
+                if (!msgContainer) return null;
+                const hasImages = !!msgContainer.querySelector('img, figure, picture, video');
+                const markdown = msgContainer.querySelector('.markdown');
+                if (!markdown) {
+                    // 텍스트 없이 이미지만 있는 응답 (e.g. 이미지 검색 결과)
+                    return hasImages ? '[이미지 포함 응답]' : null;
+                }
+                // .markdown 내 이미지 요소를 clone에서 제거 — alt CDN URL이 텍스트에 섞이는 걸 방지
+                const clone = markdown.cloneNode(true);
+                clone.querySelectorAll('img, figure, picture, video').forEach(el => el.remove());
+                const text = clone.innerText.trim();
+                // 텍스트가 비었어도 이미지 응답이면 플레이스홀더로 캡처 유지
+                return text || (hasImages ? '[이미지 포함 응답]' : null);
+            }
+            return null;
         };
 
         let wasStreaming = false;
         let capturedChatId = null;
         let captureTimer = null;
+        // stop 버튼이 연속으로 없는 프레임 수를 카운트
+        // — 이미지/웹검색 응답은 thinking→searching→responding 단계마다 버튼이 껐다 켜짐
+        // — 1프레임(300ms) 사라졌다 돌아오는 false positive를 막기 위해 5프레임(≈1.5s) 요구
+        let noStopFrames = 0;
+        const STOP_GONE_THRESHOLD = 5;
 
         const checkStreaming = () => {
             const stopBtn =
@@ -72,32 +94,73 @@ export default function Sidebar() {
                 document.querySelector('button[aria-label*="Stop"]');
             const isNowStreaming = !!stopBtn;
 
-            if (isNowStreaming && !wasStreaming) {
-                // 스트리밍 시작
-                wasStreaming = true;
-                capturedChatId = findCurrentChatId();
-            } else if (!isNowStreaming && wasStreaming) {
-                // 스트리밍 완료
-                wasStreaming = false;
-                clearTimeout(captureTimer);
-                captureTimer = setTimeout(() => {
-                    const text = getLastAssistantText();
-                    if (text) {
-                        console.log('[CLiCK] ✅ GPT 응답 캡처 완료');
-                        console.log('[CLiCK] chatID:', capturedChatId);
-                        console.log('[CLiCK] output (앞 200자):', text.slice(0, 200));
-                        const tail = text.slice(-150);
-                        sendTraceOutput(capturedChatId, tail).catch(() => {});
+            if (isNowStreaming) {
+                noStopFrames = 0;
+                if (!wasStreaming) {
+                    // 스트리밍 시작 (또는 재개)
+                    wasStreaming = true;
+                    capturedChatId = findCurrentChatId();
+                    clearTimeout(captureTimer); // 이전 단계의 대기 타이머 취소
+                }
+            } else {
+                if (wasStreaming) {
+                    noStopFrames++;
+                    if (noStopFrames >= STOP_GONE_THRESHOLD) {
+                        // STOP_GONE_THRESHOLD 프레임 연속 없음 → 진짜 완료
+                        wasStreaming = false;
+                        noStopFrames = 0;
+                        clearTimeout(captureTimer);
+                        captureTimer = setTimeout(async () => {
+                            const text = getLastAssistantText();
+                            if (text) {
+                                console.log('[CLiCK] ✅ GPT 응답 캡처 완료');
+                                console.log('[CLiCK] chatID:', capturedChatId);
+                                console.log('[CLiCK] output (앞 200자):', text.slice(0, 200));
+                                const tail = text.slice(-150);
+                                lastCapturedOutputRef.current = tail;
+                                try { await sendTraceOutput(capturedChatId, tail); } catch (e) {}
+                                triggerFetch(capturedChatId, true);
+                            } else {
+                                console.warn('[CLiCK] ⚠️ 텍스트 추출 실패 — DOM 셀렉터 확인 필요');
+                            }
+                        }, 500);
                     }
-                }, 500);
+                }
             }
         };
 
         const intervalId = setInterval(checkStreaming, 300);
 
+        // 백그라운드 탭에서 스트리밍이 끝났을 때 폴링이 스로틀돼 캡처를 놓칠 수 있음
+        // 탭에 돌아오는 순간 wasStreaming 상태를 재확인해 즉시 캡처
+        const handleVisibilityChange = () => {
+            if (document.visibilityState !== 'visible' || !wasStreaming) return;
+            const stopBtn =
+                document.querySelector('button[data-testid="stop-button"]') ??
+                document.querySelector('button[aria-label*="Stop"]');
+            if (!stopBtn) {
+                wasStreaming = false;
+                noStopFrames = 0;
+                clearTimeout(captureTimer);
+                captureTimer = setTimeout(async () => {
+                    const text = getLastAssistantText();
+                    if (text) {
+                        console.log('[CLiCK] ✅ GPT 응답 캡처 완료 (탭 복귀 시 감지)');
+                        console.log('[CLiCK] chatID:', capturedChatId);
+                        const tail = text.slice(-150);
+                        lastCapturedOutputRef.current = tail;
+                        try { await sendTraceOutput(capturedChatId, tail); } catch (e) {}
+                        triggerFetch(capturedChatId, true);
+                    }
+                }, 300);
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
             clearInterval(intervalId);
             clearTimeout(captureTimer);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 
@@ -123,7 +186,6 @@ export default function Sidebar() {
         return () => chrome.runtime.onMessage.removeListener(handler);
     }, []);
 
-    // URL 변경 감지 — [경우 1] [경우 3] [경우 4] 처리
     // pushState/replaceState/popstate 인터셉트로 이벤트 기반 감지 (폴링 제거)
     useEffect(() => {
         const handlePathChange = () => {
@@ -143,7 +205,7 @@ export default function Sidebar() {
                     } catch (e) {
                         console.error('[Sidebar] [경우1] trace_input 실패:', e);
                     }
-                    triggerFetch(newChatId, true);
+                    // recommend는 output 캡처 완료 후 트리거됨
                 })();
             } else {
                 pendingNewChatTraceRef.current = null;
@@ -237,13 +299,12 @@ export default function Sidebar() {
             const chatID = findCurrentChatId();
 
             if (chatID) {
-                // [경우 2] 기존 채팅에서 제출 → trace 완료 후 동일 chatID로 추천
+                // [경우 2] 기존 채팅에서 제출 → trace 저장만, recommend는 output 완료 후 트리거
                 try {
                     await sendTraceInput(chatID, promptText, usedRecommendedId);
                 } catch (e) {
                     console.error('[Sidebar] [경우2] trace_input 실패:', e);
                 }
-                triggerFetch(chatID, true);  // [경우 2] LLM 호출
             } else {
                 // [경우 1] 새 채팅에서 제출 → ChatGPT가 URL을 바꿀 때까지 대기
                 // URL 변경 감지 시 trace + fetch 실행 (pendingNewChatTraceRef 참조)

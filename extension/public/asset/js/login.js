@@ -33,7 +33,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const agreeCheckbox = document.getElementById("agreeAllInfo");
 
     if (!nickname) {
-      showAlert("닉네임을 입력해주세요.");
+      showAlert("이메일을 입력해주세요.");
+      form.nickname.focus();
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(nickname)) {
+      showAlert("올바른 이메일 형식을 입력해주세요.");
       form.nickname.focus();
       return;
     }
@@ -76,15 +83,55 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         }, 2000);
       } else {
-        showAlert(response.error || "로그인에 실패했습니다.");
+        showAlert("아이디와 비밀번호를 확인해주세요");
         submitButton.disabled = false;
         submitButton.textContent = "시작하기";
       }
     } catch (error) {
-      console.error("로그인 에러:", error);
-      showAlert("로그인 중 오류가 발생했습니다: " + error.message);
       submitButton.disabled = false;
       submitButton.textContent = "시작하기";
+    }
+  });
+
+  // Google 로그인
+  const googleBtn = document.getElementById("google-login-btn");
+  googleBtn.addEventListener("click", async function () {
+    googleBtn.disabled = true;
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "GOOGLE_LOGIN" });
+      if (response.success) {
+        showAlert("Google 로그인에 성공했습니다!");
+        setTimeout(() => {
+          chrome.tabs.getCurrent((tab) => { chrome.tabs.remove(tab.id); });
+        }, 2000);
+      } else {
+        showAlert(response.error || "Google 로그인에 실패했습니다.");
+        googleBtn.disabled = false;
+      }
+    } catch (error) {
+      showAlert("Google 로그인 중 오류가 발생했습니다.");
+      googleBtn.disabled = false;
+    }
+  });
+
+  // Apple 로그인
+  const appleBtn = document.getElementById("apple-login-btn");
+  appleBtn.addEventListener("click", async function () {
+    appleBtn.disabled = true;
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "APPLE_LOGIN" });
+      if (response.success) {
+        showAlert("Apple 로그인에 성공했습니다!");
+        setTimeout(() => {
+          chrome.tabs.getCurrent((tab) => { chrome.tabs.remove(tab.id); });
+        }, 2000);
+      } else {
+        showAlert(response.error || "Apple 로그인에 실패했습니다.");
+        appleBtn.disabled = false;
+      }
+    } catch (error) {
+      showAlert("Apple 로그인 중 오류가 발생했습니다.");
+      appleBtn.disabled = false;
     }
   });
 });

@@ -32,7 +32,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const nickname = nicknameInput.value.trim();
 
     if (!nickname) {
-      showAlert("닉네임을 입력해주세요.");
+      showAlert("이메일을 입력해주세요.");
+      nicknameInput.focus();
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(nickname)) {
+      showAlert("올바른 이메일 형식을 입력해주세요.");
       nicknameInput.focus();
       return;
     }
@@ -86,7 +93,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (!nickname) {
-      showAlert("닉네임을 입력해주세요.");
+      showAlert("이메일을 입력해주세요.");
+      form.nickname.focus();
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(nickname)) {
+      showAlert("올바른 이메일 형식을 입력해주세요.");
       form.nickname.focus();
       return;
     }
@@ -133,8 +147,6 @@ document.addEventListener("DOMContentLoaded", function () {
     submitButton.textContent = "회원가입 중...";
 
     try {
-      console.log("회원가입 요청 전송:", nickname);
-      
       // Chrome Extension API를 통해 회원가입 요청
       const response = await chrome.runtime.sendMessage({
         type: "SIGNUP",
@@ -160,8 +172,6 @@ document.addEventListener("DOMContentLoaded", function () {
         submitButton.textContent = "시작하기";
       }
     } catch (error) {
-      console.error("회원가입 에러:", error);
-      showAlert("회원가입 중 오류가 발생했습니다: " + error.message);
       submitButton.disabled = false;
       submitButton.textContent = "시작하기";
     }

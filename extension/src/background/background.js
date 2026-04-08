@@ -1,4 +1,4 @@
-import { API_BASE_URL, TOSS_CLIENT_KEY } from "../config";
+import { API_BASE_URL, TOSS_CLIENT_KEY, GOOGLE_CLIENT_ID, APPLE_SERVICE_ID } from "../config";
 
 chrome.runtime.onInstalled.addListener(() => {
     console.log("CLICK extension installed.");
@@ -636,6 +636,131 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             } catch (error) {
                 console.error("사용자 정보 조회 실패:", error);
                 sendResponse({ error: error.message });
+            }
+        })();
+        return true;
+    }
+
+    // Google 소셜 로그인
+    // 사전 준비: Google Cloud Console에서 OAuth 2.0 클라이언트 ID 발급 후
+    // 리디렉션 URI에 https://<EXTENSION_ID>.chromiumapp.org/ 를 등록하고
+    // 백엔드에 POST /api/auth/google { access_token } → { userID, access_token, refresh_token } 엔드포인트 구현 필요
+    if (message.type === "GOOGLE_LOGIN") {
+        (async () => {
+            try {
+                const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
+                const authUrl = new URL("https://accounts.google.com/o/oauth2/auth");
+                authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
+                authUrl.searchParams.set("redirect_uri", redirectUri);
+                authUrl.searchParams.set("response_type", "token");
+                authUrl.searchParams.set("scope", "email profile");
+
+                const redirectUrl = await new Promise((resolve, reject) => {
+                    chrome.identity.launchWebAuthFlow(
+                        { url: authUrl.toString(), interactive: true },
+                        (url) => {
+                            if (chrome.runtime.lastError) {
+                                reject(new Error(chrome.runtime.lastError.message));
+                            } else {
+                                resolve(url);
+                            }
+                        }
+                    );
+                });
+
+                const params = new URLSearchParams(new URL(redirectUrl).hash.slice(1));
+                const accessToken = params.get("access_token");
+                if (!accessToken) throw new Error("Google 액세스 토큰을 받지 못했습니다.");
+
+                const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ access_token: accessToken }),
+                });
+                if (!response.ok) throw new Error(`Google 로그인 실패: ${response.status}`);
+
+                const data = await response.json();
+                const storageData = {
+                    userID: data.userID,
+                    access_token: data.access_token,
+                    isLoggedIn: true,
+                    loginTime: Date.now(),
+                };
+                if (data.refresh_token) storageData.refresh_token = data.refresh_token;
+                await chrome.storage.local.set(storageData);
+
+                chrome.tabs.query({ url: ["https://chatgpt.com/*", "https://chat.openai.com/*"] }, (tabs) => {
+                    tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: "LOGIN_SUCCESS" }));
+                });
+
+                sendResponse({ success: true, userID: data.userID });
+            } catch (error) {
+                console.error("Google 로그인 에러:", error);
+                sendResponse({ success: false, error: error.message });
+            }
+        })();
+        return true;
+    }
+
+    // Apple 소셜 로그인
+    // 사전 준비: Apple Developer에서 Services ID 발급 후
+    // 리디렉션 URI에 https://<EXTENSION_ID>.chromiumapp.org/ 를 등록하고
+    // 백엔드에 POST /api/auth/apple { id_token, code } → { userID, access_token, refresh_token } 엔드포인트 구현 필요
+    if (message.type === "APPLE_LOGIN") {
+        (async () => {
+            try {
+                const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
+                const authUrl = new URL("https://appleid.apple.com/auth/authorize");
+                authUrl.searchParams.set("client_id", APPLE_SERVICE_ID);
+                authUrl.searchParams.set("redirect_uri", redirectUri);
+                authUrl.searchParams.set("response_type", "code id_token");
+                authUrl.searchParams.set("response_mode", "fragment");
+                authUrl.searchParams.set("scope", "name email");
+                authUrl.searchParams.set("state", Math.random().toString(36).substring(2, 15));
+
+                const redirectUrl = await new Promise((resolve, reject) => {
+                    chrome.identity.launchWebAuthFlow(
+                        { url: authUrl.toString(), interactive: true },
+                        (url) => {
+                            if (chrome.runtime.lastError) {
+                                reject(new Error(chrome.runtime.lastError.message));
+                            } else {
+                                resolve(url);
+                            }
+                        }
+                    );
+                });
+
+                const params = new URLSearchParams(new URL(redirectUrl).hash.slice(1));
+                const idToken = params.get("id_token");
+                const code = params.get("code");
+                if (!idToken) throw new Error("Apple ID 토큰을 받지 못했습니다.");
+
+                const response = await fetch(`${API_BASE_URL}/api/auth/apple`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id_token: idToken, code }),
+                });
+                if (!response.ok) throw new Error(`Apple 로그인 실패: ${response.status}`);
+
+                const data = await response.json();
+                const storageData = {
+                    userID: data.userID,
+                    access_token: data.access_token,
+                    isLoggedIn: true,
+                    loginTime: Date.now(),
+                };
+                if (data.refresh_token) storageData.refresh_token = data.refresh_token;
+                await chrome.storage.local.set(storageData);
+
+                chrome.tabs.query({ url: ["https://chatgpt.com/*", "https://chat.openai.com/*"] }, (tabs) => {
+                    tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { type: "LOGIN_SUCCESS" }));
+                });
+
+                sendResponse({ success: true, userID: data.userID });
+            } catch (error) {
+                console.error("Apple 로그인 에러:", error);
+                sendResponse({ success: false, error: error.message });
             }
         })();
         return true;
