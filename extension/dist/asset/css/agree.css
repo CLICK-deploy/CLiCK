@@ -1,0 +1,104 @@
+:root {
+  --background-color: #ffffff;
+  --container-color: #f7f7f8;
+  --input-background: #ffffff;
+  --text-color: #000000;
+  --border-color: rgba(0, 0, 0, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --placeholder-color: rgba(0, 0, 0, 0.5);
+  --subtext-color: rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #343541;
+    --container-color: #444654;
+    --input-background: #40414f;
+    --text-color: #ffffff;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --placeholder-color: rgba(255, 255, 255, 0.5);
+    --subtext-color: rgba(255, 255, 255, 0.55);
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 16px;
+}
+
+main {
+  width: 100%;
+  max-width: 840px;
+  background-color: var(--container-color);
+  border-radius: 15px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 15px var(--shadow-color);
+  padding: 40px 36px;
+}
+
+header {
+  margin-bottom: 28px;
+}
+
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 10px;
+}
+
+h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-top: 16px;
+  margin-bottom: 6px;
+}
+
+section {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 20px;
+  background-color: var(--input-background);
+  margin-bottom: 16px;
+}
+
+section:last-child {
+  margin-bottom: 0;
+}
+
+p {
+  font-size: 13px;
+  color: var(--subtext-color);
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+
+strong {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.accent {
+  color: #19c37d;
+}

@@ -172,9 +172,9 @@ export default function Sidebar() {
         setFetchTrigger(n => n + 1);
     };
 
-    // 최초 마운트: 현재 채팅방 기준 추천 로드 (DB 캐시만)
+    // 최초 마운트: 현재 채팅방 기준 추천 로드
     useEffect(() => {
-        triggerFetch(findCurrentChatId(), false);
+        triggerFetch(findCurrentChatId(), true);
     }, []);
 
     // 세션 만료 감지
@@ -209,7 +209,7 @@ export default function Sidebar() {
                 })();
             } else {
                 pendingNewChatTraceRef.current = null;
-                triggerFetch(newChatId, false);
+                triggerFetch(newChatId, true);
             }
         };
 

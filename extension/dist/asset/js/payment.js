@@ -2,6 +2,9 @@
 
 const PLAN_ORDER = ['free', 'naive', 'pro'];
 
+// 플랜별 토큰 한도 (null = 무제한)
+const PLAN_CREDIT_LIMIT = { free: 10_000, naive: 100_000, pro: null };
+
 const PLAN_INFO = {
   naive: { amount: 1200, orderName: "CLiCK Naive 플랜" },
   pro:   { amount: 9900, orderName: "CLiCK Pro 플랜"   },
@@ -70,21 +73,21 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (info.expires_at) {
       const daysLeft = Math.ceil((new Date(info.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
       planNameEl.textContent = daysLeft > 0 ? `${daysLeft}일 남음` : "만료됨";
-    } else if (info.plan === "free") {
-      planNameEl.textContent = "–";
     } else {
       planNameEl.textContent = "–";
     }
 
-    if (info.credits_total != null && info.credits_total > 0) {
-      const used  = Number(info.credits_used  || 0).toLocaleString("ko-KR");
-      const total = Number(info.credits_total).toLocaleString("ko-KR");
-      amountEl.textContent = `${used} 크레딧 / ${total} 크레딧`;
-      const pct = Math.min(100, Math.round(((info.credits_used || 0) / info.credits_total) * 100));
-      barEl.style.width = `${pct}%`;
-    } else if (info.plan === "pro") {
-      amountEl.textContent = "무제한";
+    const creditsTotal = info.credits_total ?? PLAN_CREDIT_LIMIT[info.plan] ?? null;
+
+    if (creditsTotal === null) {
+      amountEl.textContent = `${Number(info.credits_used || 0).toLocaleString("ko-KR")} / 무제한`;
       barEl.style.width = "100%";
+    } else if (creditsTotal > 0) {
+      const used  = Number(info.credits_used || 0).toLocaleString("ko-KR");
+      const total = Number(creditsTotal).toLocaleString("ko-KR");
+      amountEl.textContent = `${used} 토큰 / ${total} 토큰`;
+      const pct = Math.min(100, Math.round(((info.credits_used || 0) / creditsTotal) * 100));
+      barEl.style.width = `${pct}%`;
     } else {
       amountEl.textContent = "–";
       barEl.style.width = "0%";
