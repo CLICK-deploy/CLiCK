@@ -10,6 +10,8 @@ const TEMPLATES = [
 
 export default function Sidebar() {
     const [recommendedPrompts, setRecommendedPrompts] = useState([]);
+    const [displayedTitles, setDisplayedTitles] = useState({}); // { [id]: string } 타이핑 효과용
+    const typingTimersRef = useRef({});
     const [currentPath, setCurrentPath] = useState(window.location.pathname);
     // fetchTrigger가 바뀔 때만 추천을 가져옴 — fetchParamsRef에 chatID와 generate를 먼저 세팅
     const [fetchTrigger, setFetchTrigger] = useState(0);
@@ -345,6 +347,38 @@ export default function Sidebar() {
         };
     }, []);
 
+    // 추천 프롬프트 타이핑 효과 — recommendedPrompts가 바뀔 때 새 항목에 대해 타이머 시작
+    useEffect(() => {
+        const currentIds = new Set(recommendedPrompts.map(p => p.id));
+
+        // 사라진 프롬프트의 타이머 정리
+        Object.keys(typingTimersRef.current).forEach(id => {
+            if (!currentIds.has(id)) {
+                clearInterval(typingTimersRef.current[id]);
+                delete typingTimersRef.current[id];
+            }
+        });
+
+        // 새 프롬프트에 대해 타이핑 애니메이션 시작
+        recommendedPrompts.forEach(p => {
+            if (typingTimersRef.current[p.id]) return; // 이미 애니메이션 중
+            let charIndex = 0;
+            typingTimersRef.current[p.id] = setInterval(() => {
+                charIndex++;
+                setDisplayedTitles(prev => ({ ...prev, [p.id]: p.title.slice(0, charIndex) }));
+                if (charIndex >= p.title.length) {
+                    clearInterval(typingTimersRef.current[p.id]);
+                    delete typingTimersRef.current[p.id];
+                }
+            }, 28);
+        });
+    }, [recommendedPrompts]);
+
+    // 언마운트 시 타이핑 타이머 전체 정리
+    useEffect(() => {
+        return () => { Object.values(typingTimersRef.current).forEach(clearInterval); };
+    }, []);
+
     // prompt를 textarea에 적용하는 함수
     const applyPrompt = (content, recommendedId = null) => {
         const textarea = document.querySelector('#prompt-textarea');
@@ -372,7 +406,7 @@ export default function Sidebar() {
                     <div className="flex min-w-0 grow items-center gap-2.5 group-data-no-contents-gap:gap-0">
                         <div className="truncate">
                             <span className="dir-auto">
-                                {p.title}
+                                {displayedTitles[p.id] ?? ''}
                             </span>
                         </div>
                     </div>
