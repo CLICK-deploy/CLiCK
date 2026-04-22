@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 export default function Login({ onLoginSuccess }) {
-    const [nickname, setNickname] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [ageGroup, setAgeGroup] = useState('');
     const [gender, setGender] = useState('');
@@ -15,8 +15,15 @@ export default function Login({ onLoginSuccess }) {
         setError('');
 
         // 유효성 검사
-        if (!nickname.trim()) {
-            setError('닉네임을 입력해주세요.');
+        if (!email.trim()) {
+            setError('이메일을 입력해주세요.');
+            setLoading(false);
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            setError('올바른 이메일 형식을 입력해주세요.');
             setLoading(false);
             return;
         }
@@ -44,7 +51,7 @@ export default function Login({ onLoginSuccess }) {
                 chrome.runtime.sendMessage(
                     { 
                         type: "LOGIN", 
-                        username: nickname,
+                        username: email,
                         password: password,
                         ageGroup: ageGroup,
                         gender: gender
@@ -75,10 +82,10 @@ export default function Login({ onLoginSuccess }) {
                 </div>
 
                 <input
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    placeholder="닉네임"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="이메일"
                     style={{
                         width: '100%',
                         padding: '10px',
